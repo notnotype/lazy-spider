@@ -10,7 +10,7 @@ from os.path import join
 from os.path import exists
 from typing import Any, Union
 from urllib.parse import urljoin
-from json import load, dump
+from json import load, dump, loads, dumps
 from time import localtime
 
 import requests
@@ -80,42 +80,6 @@ class HeadersGenerator:
 
 
 class Spider:
-    # done `lxml`
-    class Response:
-        def __init__(self, response: requests.Response):
-            self.response = response
-            self.status_code = response.status_code
-            self.__html = None
-
-        @property
-        def content(self):
-            return self.response.content
-
-        @property
-        def text(self):
-            return self.response.text
-
-        @property
-        def encoding(self):
-            return self.response.encoding
-
-        @encoding.setter
-        def encoding(self, encoding):
-            self.response.encoding = encoding
-
-        @property
-        def html(self) -> HTML:
-            if not self.__html:
-                self.__html = HTML(self.text)
-            return self.__html
-
-        @html.setter
-        def html(self, value):
-            self.__html = value
-
-        def xpath(self, exp):
-            return self.__html.xpath(exp)
-
     # todo 针对每次请求不同的`header`来重新加载缓存
     # todo 增加字段`data`,存`post`字段
     # todo 增加字段`header`, 存header
@@ -210,6 +174,53 @@ class Spider:
             except IOError as e:
                 logger.error('IO错误: {}'.format(join(self.__cache_dir, self.__cache_json_name)))
                 raise e
+
+    # done `lxml`
+    class Response:
+        def __init__(self, response: requests.Response):
+            self.response = response
+            self.status_code = response.status_code
+            self.__html = None
+            self.__json = None
+
+        @property
+        def content(self):
+            return self.response.content
+
+        @property
+        def text(self):
+            return self.response.text
+
+        @property
+        def encoding(self):
+            return self.response.encoding
+
+        @encoding.setter
+        def encoding(self, encoding):
+            self.response.encoding = encoding
+
+        @property
+        def html(self) -> HTML:
+            if not self.__html:
+                self.__html = HTML(self.text)
+            return self.__html
+
+        @html.setter
+        def html(self, value):
+            self.__html = value
+
+        def xpath(self, exp):
+            return self.__html.xpath(exp)
+
+        @property
+        def json(self, *args, **kwargs) -> dict:
+            if not self.__json:
+                try:
+                    self.__json = loads(self.text)
+                except json.JSONDecodeError:
+                    logger.error("Json解码错误: {}".format(self.text))
+                    raise
+            return self.__json
 
     def __init__(self):
         self.header_enable = True
