@@ -1,19 +1,19 @@
+import datetime
+import json
 import logging
 import os
-import json
-import uuid
 import pickle
-import datetime
-
-from lxml.etree import HTML
-from os.path import join
+import uuid
+from json import load, dump, loads
 from os.path import exists
+from os.path import join
+from time import localtime
+from types import MethodType
 from typing import Any, Union
 from urllib.parse import urljoin
-from json import load, dump, loads, dumps
-from time import localtime
 
 import requests
+from lxml.etree import HTML
 from requests import get as _get
 from requests import post as _post
 
@@ -29,31 +29,57 @@ def limit_text(s: str, max_len):
         return s
 
 
+class FormatFilter(logging.Filter):
+
+    def filter(self, record: logging.LogRecord) -> int:
+        def getMessage(obj):
+            msg = str(obj.msg)
+            if obj.args:
+                msg = msg.format(*obj.args)
+            return msg
+
+        # 使用`{`风格格式化
+        record.getMessage = MethodType(getMessage, record)
+
+        # context: dict = record.__getattribute__('context')
+        # record.msg += '\n' + '\n'.join([f'{str(k)}: {str(v)}' for k, v in context.items()])
+
+        return True
+
+
 # todo 继承`StreamHandler`实现详细`log`与精简`log`
 # todo 记录错误单独保存文件
 def init_logger(log_dir='log', level=logging.INFO):
     global logger
-    logger = logging.Logger('__main__')
     if not exists(log_dir):
         os.mkdir(log_dir)
-    handler = logging.FileHandler(f"{log_dir}/"
-                                  f"{localtime().tm_year}-"
-                                  f"{localtime().tm_mon}-"
-                                  f"{localtime().tm_mday}--"
-                                  f"{localtime().tm_hour}h-"
-                                  f"{localtime().tm_min}m-"
-                                  f"{localtime().tm_sec}s.log",
-                                  encoding="utf-8")
-    formatter = logging.Formatter("[%(levelname)-5.5s][%(funcName)-16.16s][%(lineno)3.3d行]-[%(message)s]")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    file_handler = logging.FileHandler(f"{log_dir}/"
+                                       f"{localtime().tm_year}-"
+                                       f"{localtime().tm_mon}-"
+                                       f"{localtime().tm_mday}--"
+                                       f"{localtime().tm_hour}h-"
+                                       f"{localtime().tm_min}m-"
+                                       f"{localtime().tm_sec}s.log",
+                                       encoding="utf-8")
+    formatter = logging.Formatter('[{asctime}]'
+                                  '[{levelname!s:5}]'
+                                  '[{name!s:^16}]'
+                                  '[{lineno!s:4}行]'
+                                  '[{module}.{funcName}]\n'
+                                  '{message!s}',
+                                  style='{',
+                                  datefmt='%Y-%m-%d %H:%M:%S')
+    file_handler.setFormatter(formatter)
 
+    logger = logging.Logger('__main__')
     console = logging.StreamHandler()
-    console.setLevel(level)
+
+    logger.addHandler(file_handler)
     console.setFormatter(formatter)
 
-    logger.addHandler(handler)
+    logger.addHandler(file_handler)
     logger.addHandler(console)
+    logger.addFilter(FormatFilter())
 
 
 # todo 管理文件
@@ -97,15 +123,14 @@ class Spider:
             self.__cache_json_name = 'cache.json'
             if not exists(cache_dir):
                 os.mkdir(cache_dir)
-                # TODO right?
-                logger.debug('生成文件缓存路径: ', os.path.realpath(cache_dir))
+                logger.debug('生成文件缓存路径{}', os.path.realpath(cache_dir))
             # 是否存在`cache.json`,没有则生成
             if not exists(join(cache_dir, self.__cache_json_name)):
                 try:
                     with open(join(self.__cache_dir, self.__cache_json_name), 'a+', encoding='utf8') as f:
                         dump({"cached_files": {}}, f, indent=4)
                 except IOError as e:
-                    logger.error('IO错误: {}'.format(join(self.__cache_dir, self.__cache_json_name)))
+                    logger.error('IO错误{}', join(self.__cache_dir, self.__cache_json_name))
                     raise e
             # 打开缓存清单文件
             try:
@@ -113,13 +138,13 @@ class Spider:
                     self.__cache_json: dict = load(f)
             except IOError as e:
                 logger.exception(e)
-                logger.error('IO错误: {}'.format(join(cache_dir, self.__cache_json_name)))
+                logger.error('IO错误{}', join(cache_dir, self.__cache_json_name))
                 raise e
             except json.JSONDecodeError as e:
-                logger.error('Json解码错误: {}'.format(join(cache_dir, self.__cache_json_name)))
+                logger.error('Json解码错误{}', join(cache_dir, self.__cache_json_name))
                 raise e
             except Exception as e:
-                logger.error('未知错误在: {}'.format(join(cache_dir, self.__cache_json_name)))
+                logger.error('未知错误在{}', join(cache_dir, self.__cache_json_name))
                 raise e
 
         def is_cached(self, name: str) -> bool:
@@ -172,7 +197,7 @@ class Spider:
                 with open(join(self.__cache_dir, self.__cache_json_name), 'r+', encoding='utf8') as f:
                     dump(self.__cache_json, f, indent=4)
             except IOError as e:
-                logger.error('IO错误: {}'.format(join(self.__cache_dir, self.__cache_json_name)))
+                logger.error('IO错误: {}', join(self.__cache_dir, self.__cache_json_name))
                 raise e
 
     # done `lxml`
@@ -216,9 +241,9 @@ class Spider:
         def json(self, *args, **kwargs) -> dict:
             if not self.__json:
                 try:
-                    self.__json = loads(self.text)
+                    self.__json = loads(self.text, *args, **kwargs)
                 except json.JSONDecodeError:
-                    logger.error("Json解码错误: {}".format(self.text))
+                    logger.error("Json解码错误{}", self.text)
                     raise
             return self.__json
 
@@ -228,7 +253,8 @@ class Spider:
         self.cache = Spider.Cache()
 
     # todo 对于失败的`url`保存到另一个`log`文件
-    def __get_or_post(self, *args, **kwargs) -> Union[Response, requests.Response, object]:
+    # done `args`解析有bug, 今天睡了, 拜拜
+    def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
         """
 
         :param args `url`的各个路径:
@@ -241,31 +267,33 @@ class Spider:
         # 获取`alive_time`, `url`参数
         kwargs.setdefault('alive_time', datetime.datetime.now() + datetime.timedelta(days=3))
         kwargs.setdefault('cache_enable', True)
-        handle = args[1]
         alive_time = kwargs.pop('alive_time')
         cache_enable = kwargs.pop('cache_enable')
-        args = args[2:]
 
         # 是否使用头
         if self.header_enable:
             kwargs['headers'] = self.header_generator()
 
-        url = '/'
+        url = ''
         for each in args:
             url = urljoin(url, each)
+        if '://' not in url:
+            url = 'http://' + url
+            logger.debug('url没有添加协议, 使用[http]协议代替')
+
         if self.cache.is_cached(url) and cache_enable:
-            logger.debug('从缓存: {:.200} <- {}'.format(limit_text(url, 200), '文件'))
+            logger.debug('从缓存: {:.200} <- {}', limit_text(url, 200), '文件')
             return self.cache.from_cache(url)
-        logger.info('下载: {:.200}'.format(limit_text(url, 200)))
+        logger.info('下载: {:.200}', limit_text(url, 200))
 
         retry = 3
         while retry:
             try:
-                response = self.Response(handle(*args, **kwargs))
+                response = self.Response(handle(url, **kwargs))
                 if response.status_code == 200:
                     self.cache.cache(url, response, alive_time)
                 else:
-                    logger.debug('状态码[{}], 取消缓存'.format(response.status_code))
+                    logger.debug('状态码[{}], 取消缓存', response.status_code)
                 return response
             except requests.Timeout as e:
                 if retry == 1:
@@ -288,7 +316,7 @@ class Spider:
         sep_time: 间隔时间\n
         """
         # 获取`alive_time`, `url`参数
-        return self.__get_or_post(self, _get, *args, **kwargs)
+        return self.__get_or_post(_get, *args, **kwargs)
 
     def post(self, *args, **kwargs) -> Response:
         """
@@ -298,7 +326,7 @@ class Spider:
         cache_enable: 是否使用缓存\n
         sep_time: 间隔时间\n
         """
-        return self.__get_or_post(self, _post, *args, **kwargs)
+        return self.__get_or_post(_post, *args, **kwargs)
 
 
 init_logger(level=logging.DEBUG)
@@ -306,6 +334,6 @@ if __name__ == '__main__':
     spider = Spider()
     resp = spider.get('http://www.baidu.com/', '1.png', timeout=1, cache_enable=False)
     resp.encoding = 'gb2313'
-    print(resp.text)
+    # print(resp.text)
     print('=====================')
     spider.cache.save()
