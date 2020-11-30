@@ -17,8 +17,6 @@ from lxml.etree import HTML
 from requests import get as _get
 from requests import post as _post
 
-logger: logging.Logger = Any
-
 
 def limit_text(s: str, max_len):
     """文本太长自动打省略号"""
@@ -49,8 +47,7 @@ class FormatFilter(logging.Filter):
 
 # todo 继承`StreamHandler`实现详细`log`与精简`log`
 # todo 记录错误单独保存文件
-def init_logger(log_dir='log', level=logging.INFO):
-    global logger
+def init_logger(log_dir='log', level=logging.INFO) -> logging.Logger:
     if not exists(log_dir):
         os.mkdir(log_dir)
     file_handler = logging.FileHandler(f"{log_dir}/"
@@ -71,15 +68,19 @@ def init_logger(log_dir='log', level=logging.INFO):
                                   datefmt='%Y-%m-%d %H:%M:%S')
     file_handler.setFormatter(formatter)
 
-    logger = logging.Logger('__main__')
+    _logger = logging.Logger('sss')
     console = logging.StreamHandler()
 
-    logger.addHandler(file_handler)
+    _logger.addHandler(file_handler)
     console.setFormatter(formatter)
 
-    logger.addHandler(file_handler)
-    logger.addHandler(console)
-    logger.addFilter(FormatFilter())
+    _logger.addHandler(file_handler)
+    _logger.addHandler(console)
+    _logger.addFilter(FormatFilter())
+    return _logger
+
+
+logger = init_logger()
 
 
 # todo 管理文件
