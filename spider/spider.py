@@ -14,13 +14,12 @@ from urllib.parse import urljoin
 
 import requests
 from lxml.etree import HTML
-from requests import get as _get
-from requests import post as _post
+
 
 # 改变脚本的工作目录
-START_DIR = os.getcwd()
-FILE_DIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(FILE_DIR)
+# START_DIR = os.getcwd()
+# FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+# os.chdir(FILE_DIR)
 
 
 def limit_text(s: str, max_len):
@@ -53,7 +52,7 @@ class FormatFilter(logging.Filter):
 # todo 继承`StreamHandler`实现详细`log`与精简`log`
 # todo 记录错误单独保存文件
 def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
-    os.chdir(START_DIR)
+    # os.chdir(START_DIR)
     if not exists(log_dir):
         os.mkdir(log_dir)
     file_handler = logging.FileHandler(f"{log_dir}/"
@@ -85,7 +84,7 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
     _logger.addHandler(file_handler)
     _logger.addHandler(_console)
     _logger.addFilter(FormatFilter())
-    os.chdir(FILE_DIR)
+    # os.chdir(FILE_DIR)
     return _logger
 
 
@@ -104,15 +103,9 @@ class FilePipeline:
         ...
 
 
-class HeadersGenerator:
-    # todo maybe not staticmethod
-    @staticmethod
-    def get_headers() -> dict:
-        return {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36'}
-
-    def __call__(self, *args, **kwargs):
-        return self.get_headers()
+def get_headers():
+    return {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
+                          ' Chrome/86.0.4240.198 Safari/537.36'}
 
 
 class Spider:
@@ -259,8 +252,9 @@ class Spider:
 
     def __init__(self):
         self.header_enable = True
-        self.header_generator = HeadersGenerator()
         self.cache = Spider.Cache()
+        self.session = requests.session()
+        self.update_header()
 
     # todo 对于失败的`url`保存到另一个`log`文件
     # done `args`解析有bug, 今天睡了, 拜拜
@@ -279,10 +273,6 @@ class Spider:
         kwargs.setdefault('cache_enable', True)
         alive_time = kwargs.pop('alive_time')
         cache_enable = kwargs.pop('cache_enable')
-
-        # 是否使用头
-        if self.header_enable:
-            kwargs['headers'] = self.header_generator()
 
         url = ''
         for each in args:
@@ -326,7 +316,7 @@ class Spider:
         sep_time: 间隔时间\n
         """
         # 获取`alive_time`, `url`参数
-        return self.__get_or_post(_get, *args, **kwargs)
+        return self.__get_or_post(self.session.get, *args, **kwargs)
 
     def post(self, *args, **kwargs) -> Response:
         """
@@ -336,7 +326,13 @@ class Spider:
         cache_enable: 是否使用缓存\n
         sep_time: 间隔时间\n
         """
-        return self.__get_or_post(_post, *args, **kwargs)
+        return self.__get_or_post(self.session.post, *args, **kwargs)
+
+    def update_header(self):
+        self.session.headers.update(get_headers())
+
+    def close(self):
+        self.session.close()
 
 
 init_logger(level=logging.DEBUG)
