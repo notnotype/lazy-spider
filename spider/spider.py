@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import pickle
+import re
 import uuid
 from json import load, dump, loads
 from os.path import exists
@@ -21,7 +22,7 @@ from lxml.etree import HTML
 # FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 # os.chdir(FILE_DIR)
 
-
+# todo prepare to delete this function
 def limit_text(s: str, max_len):
     """文本太长自动打省略号"""
     s_len = len(s)
@@ -108,7 +109,6 @@ def get_headers():
                           ' Chrome/86.0.4240.198 Safari/537.36'}
 
 
-# todo re 增加`search`
 class Spider:
     # todo 针对每次请求不同的`header`来重新加载缓存
     # todo 增加字段`data`,存`post`字段
@@ -254,6 +254,9 @@ class Spider:
                     raise
             return self.__json
 
+        def search(self, pattern, flags=0):
+            return re.search(pattern, self.text, flags=flags)
+
     def __init__(self):
         self.header_enable = True
         self.cache = Spider.Cache()
@@ -261,7 +264,6 @@ class Spider:
         self.update_header()
 
     # todo 对于失败的`url`保存到另一个`log`文件
-    # done `args`解析有bug, 今天睡了, 拜拜
     def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
         """
 
