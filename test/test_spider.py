@@ -1,14 +1,15 @@
 import logging
 import sys
 
-from spider import Spider
+from spider.spider import Spider
 
 sys.path.append('../')
 
-logger = logging.getLogger('')
-logger.setLevel(logging.DEBUG)
+spider = Spider()
+logger = logging.getLogger('spider.test_spider')
+logger.debug('heldsfadsflo')
 
 if __name__ == '__main__':
-    spider = Spider()
-    spider.get('www.baidu.com')
-    logger.info('hello')
+    resp = spider.get('https://www.baidu.com', cache=False)
+    result_title = resp.search('<title>(.*)</title>')
+    result_title.groups()

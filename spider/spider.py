@@ -50,6 +50,7 @@ class FormatFilter(logging.Filter):
         return True
 
 
+# todo logger到底怎么用啊
 # todo 继承`StreamHandler`实现详细`log`与精简`log`
 # todo 记录错误单独保存文件
 def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
@@ -74,7 +75,7 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
                                   datefmt='%Y-%m-%d %H:%M:%S')
     file_handler.setFormatter(formatter)
 
-    _logger = logging.Logger(__name__)
+    _logger = logging.getLogger('spider')
     _console = logging.StreamHandler()
     _logger.setLevel(level)
     _console.setLevel(level)
@@ -258,10 +259,10 @@ class Spider:
             return re.search(pattern, self.text, flags=flags)
 
     def __init__(self):
-        self.header_enable = True
+        self.headers_generator = get_headers
         self.cache = Spider.Cache()
         self.session = requests.session()
-        self.update_header()
+        self.update_headers()
 
     # todo 对于失败的`url`保存到另一个`log`文件
     def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
@@ -276,7 +277,7 @@ class Spider:
         """
         # 获取`alive_time`, `url`参数
         kwargs.setdefault('alive_time', datetime.datetime.now() + datetime.timedelta(days=3))
-        kwargs.setdefault('cache_enable', True)
+        kwargs.setdefault('cache', True)
         kwargs.setdefault('timeout', (5, 20))
         alive_time = kwargs.pop('alive_time')
         cache_enable = kwargs.pop('cache')
@@ -335,14 +336,14 @@ class Spider:
         """
         return self.__get_or_post(self.session.post, *args, **kwargs)
 
-    def update_header(self):
-        self.session.headers.update(get_headers())
+    def update_headers(self):
+        if self.headers_generator:
+            self.session.headers.update(self.headers_generator())
 
     def close(self):
         self.session.close()
 
 
-init_logger(level=logging.DEBUG)
 if __name__ == '__main__':
     spider = Spider()
     resp = spider.get('http://www.baidu.com/', '1.png', timeout=1, cache_enable=False)
