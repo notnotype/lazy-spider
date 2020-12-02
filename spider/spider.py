@@ -275,6 +275,7 @@ class Spider:
         # 获取`alive_time`, `url`参数
         kwargs.setdefault('alive_time', datetime.datetime.now() + datetime.timedelta(days=3))
         kwargs.setdefault('cache_enable', True)
+        kwargs.setdefault('timeout', (5, 20))
         alive_time = kwargs.pop('alive_time')
         cache_enable = kwargs.pop('cache')
 
