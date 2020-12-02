@@ -189,7 +189,7 @@ class Spider:
                 logger.error('IO错误: {}'.format(filename))
                 return False
             else:
-                logger.debug('缓存: {:.200} -> {}'.format(limit_text(name, 200), filename))
+                logger.debug('缓存: {} -> {}'.format(limit_text(name, 200), filename))
                 return True
 
         # 关闭保存文件
@@ -239,10 +239,16 @@ class Spider:
             return self.__html.xpath(exp)
 
         @property
-        def json(self, *args, **kwargs) -> dict:
+        def json(self, *args, slices=None, **kwargs) -> dict:
+            """
+            slices: (start, end)字符串分片后在进行解码
+            """
             if not self.__json:
                 try:
-                    self.__json = loads(self.text, *args, **kwargs)
+                    if slices:
+                        self.__json = loads(self.text[slices[0]: slices[1]], *args, **kwargs)
+                    else:
+                        self.__json = loads(self.text, *args, **kwargs)
                 except json.JSONDecodeError:
                     logger.error("Json解码错误{}", self.text)
                     raise
