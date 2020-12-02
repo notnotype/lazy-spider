@@ -1,8 +1,12 @@
 import logging
+import sys
 
 from spider import Spider
 
-logger = logging.getLogger('sss.s')
+sys.path.append('../')
+
+logger = logging.getLogger('')
+logger.setLevel(logging.DEBUG)
 
 if __name__ == '__main__':
     spider = Spider()

@@ -9,13 +9,18 @@ from os.path import exists
 from os.path import join
 from time import localtime
 from types import MethodType
-from typing import Any, Union
+from typing import Union
 from urllib.parse import urljoin
 
 import requests
 from lxml.etree import HTML
 from requests import get as _get
 from requests import post as _post
+
+# 改变脚本的工作目录
+START_DIR = os.getcwd()
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(FILE_DIR)
 
 
 def limit_text(s: str, max_len):
@@ -47,7 +52,8 @@ class FormatFilter(logging.Filter):
 
 # todo 继承`StreamHandler`实现详细`log`与精简`log`
 # todo 记录错误单独保存文件
-def init_logger(log_dir='log', level=logging.INFO) -> logging.Logger:
+def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
+    os.chdir(START_DIR)
     if not exists(log_dir):
         os.mkdir(log_dir)
     file_handler = logging.FileHandler(f"{log_dir}/"
@@ -68,15 +74,18 @@ def init_logger(log_dir='log', level=logging.INFO) -> logging.Logger:
                                   datefmt='%Y-%m-%d %H:%M:%S')
     file_handler.setFormatter(formatter)
 
-    _logger = logging.Logger('sss')
-    console = logging.StreamHandler()
+    _logger = logging.Logger(__name__)
+    _console = logging.StreamHandler()
+    _logger.setLevel(level)
+    _console.setLevel(level)
 
     _logger.addHandler(file_handler)
-    console.setFormatter(formatter)
+    _console.setFormatter(formatter)
 
     _logger.addHandler(file_handler)
-    _logger.addHandler(console)
+    _logger.addHandler(_console)
     _logger.addFilter(FormatFilter())
+    os.chdir(FILE_DIR)
     return _logger
 
 
