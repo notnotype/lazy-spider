@@ -108,6 +108,7 @@ def get_headers():
                           ' Chrome/86.0.4240.198 Safari/537.36'}
 
 
+# todo re 增加`search`
 class Spider:
     # todo 针对每次请求不同的`header`来重新加载缓存
     # todo 增加字段`data`,存`post`字段
@@ -172,27 +173,24 @@ class Spider:
                 return None
 
         def cache(self, name: str, obj: object, alive_time: datetime.datetime) -> bool:
-            if self.is_cached(name):
-                return True
+            self.__cache_json['cached_files'][name] = {
+                "filename": str(uuid.uuid4()),
+                "typing": str(obj.__class__),
+                "repr": repr(obj),
+                "alive_time": alive_time.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            item = self.__cache_json['cached_files'][name]
+            filename = item['filename']
+            try:
+                with open(join(self.__cache_dir, filename), 'wb') as f:
+                    pickle.dump(obj, f)
+                    self.save()
+            except IOError:
+                logger.error('IO错误: {}'.format(filename))
+                return False
             else:
-                self.__cache_json['cached_files'][name] = {
-                    "filename": str(uuid.uuid4()),
-                    "typing": str(obj.__class__),
-                    "repr": repr(obj),
-                    "alive_time": alive_time.strftime('%Y-%m-%d %H:%M:%S')
-                }
-                item = self.__cache_json['cached_files'][name]
-                filename = item['filename']
-                try:
-                    with open(join(self.__cache_dir, filename), 'wb') as f:
-                        pickle.dump(obj, f)
-                        self.save()
-                except IOError:
-                    logger.error('IO错误: {}'.format(filename))
-                    return False
-                else:
-                    logger.debug('缓存: {:.200} -> {}'.format(limit_text(name, 200), filename))
-                    return True
+                logger.debug('缓存: {:.200} -> {}'.format(limit_text(name, 200), filename))
+                return True
 
         # 关闭保存文件
         def save(self):
@@ -272,7 +270,7 @@ class Spider:
         kwargs.setdefault('alive_time', datetime.datetime.now() + datetime.timedelta(days=3))
         kwargs.setdefault('cache_enable', True)
         alive_time = kwargs.pop('alive_time')
-        cache_enable = kwargs.pop('cache_enable')
+        cache_enable = kwargs.pop('cache')
 
         url = ''
         for each in args:
@@ -282,9 +280,9 @@ class Spider:
             logger.debug('url没有添加协议, 使用[http]协议代替')
 
         if self.cache.is_cached(url) and cache_enable:
-            logger.debug('从缓存: {:.200} <- {}', limit_text(url, 200), '文件')
+            logger.debug('从缓存: {} <- {}', limit_text(url, 200), '文件')
             return self.cache.from_cache(url)
-        logger.info('下载: {:.200}', limit_text(url, 200))
+        logger.info('下载: {}', limit_text(url, 200))
 
         retry = 3
         while retry:
