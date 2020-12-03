@@ -105,6 +105,7 @@ class JsonFile:
 
     def __init__(self, file: IO, obj: dict = None, overwrite=True, indent=4):
         """Json与文件同步序列化
+        注意不要使用此构造方法,应当使用工厂方法
 
         :param file: 一个文件流
         :param obj: 一个字典
@@ -132,6 +133,11 @@ class JsonFile:
         c.load(f)
         return c
 
+    @classmethod
+    def from_streaming(cls, streaming):
+        c = cls(streaming, {})
+        return c
+
     def keys(self) -> Iterable:
         return self.obj.keys()
 
@@ -144,8 +150,11 @@ class JsonFile:
     def __setitem__(self, k, v):
         return self.obj.__setitem__(k, v)
 
+    def __getitem__(self, k):
+        return self.obj.__getitem__(k)
+
     def __delitem__(self, v):
-        return self.obj.__getitem__(v)
+        return self.obj.__delitem__(v)
 
     def __str__(self) -> str:
         return super().__str__()
@@ -505,7 +514,7 @@ class Spider:
 
 
 def test_resource():
-    res = ResourceRoot('resources')
+    res = ResourceRoot('resource')
     logger.debug('list_dir: {}', res)
     res['streaming.txt'] = 'streaming.txt'
     res.save('test_json', {'date': ['t', 'e', 's', 't']})
