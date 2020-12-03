@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from spider.spider import Spider
+from spider import Spider
 
 sys.path.append('../')
 

@@ -1,4 +1,5 @@
 import datetime
+import io
 import json
 import logging
 import os
@@ -10,7 +11,7 @@ from os.path import exists
 from os.path import join
 from time import localtime
 from types import MethodType
-from typing import Union
+from typing import Union, IO, Iterable
 from urllib.parse import urljoin
 
 import requests
@@ -30,6 +31,13 @@ def limit_text(s: str, max_len):
         return s[:int(max_len / 2)] + '...' + s[-int(max_len / 2):]
     else:
         return s
+
+
+def elem_tostring(elem):
+    """HTML元素转换成字符串"""
+    elems_text_nodes = elem.xpath(".//text()")
+    beautiful_text = ''.join([elem.strip() for elem in elems_text_nodes])
+    return beautiful_text
 
 
 class FormatFilter(logging.Filter):
@@ -93,16 +101,166 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
 logger = init_logger()
 
 
-# todo 管理文件
-class FilePipeline:
-    def __init__(self, base_dir: str):
-        self.base_dir = base_dir
+class JsonFile:
 
-    def process(self, item):
-        ...
+    def __init__(self, file: IO, obj: dict = None, overwrite=True, indent=4):
+        """Json与文件同步序列化
+
+        :param file: 一个文件流
+        :param obj: 一个字典
+        :param indent: tab的长度
+        """
+        if not file.writable():
+            raise IOError('文件不可写<{}>'.format(file.name))
+        if not file.seekable():
+            raise IOError('文件不可查<{}>'.format(file.name))
+        if not file.readable():
+            raise IOError('文件不可读<{}>'.format(file.name))
+        self.f = file
+        self.obj = obj
+        self.indent = indent
+
+    @classmethod
+    def from_newfile(cls, filename, mode='w', encoding='utf8'):
+        f = open(filename, mode=mode, encoding=encoding)
+        return cls(f, {})
+
+    @classmethod
+    def from_filename(cls, filename, mode='r+', encoding='utf8'):
+        f = open(filename, mode=mode, encoding=encoding)
+        c = cls(f)
+        c.load(f)
+        return c
+
+    def keys(self) -> Iterable:
+        return self.obj.keys()
+
+    def items(self) -> (Iterable, Iterable):
+        return self.items()
+
+    def __len__(self) -> int:
+        return self.obj.__len__()
+
+    def __setitem__(self, k, v):
+        return self.obj.__setitem__(k, v)
+
+    def __delitem__(self, v):
+        return self.obj.__getitem__(v)
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+    def load(self, streaming: IO):
+        self.obj = json.load(streaming)
+
+    def dump(self):
+        self.f.seek(0)
+        json.dump(self.obj, self.f, indent=4)
 
     def close(self):
-        ...
+        self.dump()
+        self.f.close()
+
+
+def test_json_file():
+    # res = ResourceRoot('resource')
+    # f = res['test_json_file.json']
+    # obj = {'data': [1, 23]}
+    # jf = JsonFile(f, obj)
+    # jf['data'] = '1'
+    # jf.close()
+    test_json2()
+
+
+def test_json2():
+    jf2 = JsonFile.from_filename('resources/testjson2.json')
+    jf2['title'] = 'changed testjson2'
+    jf2.close()
+
+
+# todo 管理文件
+# 考虑使用`property`
+class ResourceRoot:
+    def scan(self):
+        self.list_dir = list(map(lambda name: join(self.root_dir, name), os.listdir(self.root_dir)))
+
+        file_names = list(filter(lambda name: os.path.isfile(name), self.list_dir))
+        self.files = {filename: None for filename in file_names}
+        dir_names = [_dir for _dir in filter(lambda name: os.path.isdir(name), self.list_dir)]
+        self.dirs = {dir_name: ResourceRoot(dir_name) for dir_name in dir_names}
+
+    def __init__(self, root_dir='resources', chuck=2048, mode='r+', encoding='utf8'):
+        """把一个文件夹抽象成一个类,可以保存和读取资源文件
+
+        :param root_dir: 默认为`resources`
+        :param chuck: 默认读取写入的区块
+        :param mode: 文件打开模式  默认`r+`
+        :param encoding: 文件编码  默认`utf8`
+        """
+        self.rel_root_dir = root_dir
+        self.chuck = chuck
+        self.root_dir = os.path.abspath(root_dir)
+        self.mode = mode
+        self.encoding = encoding
+
+        # These Attributes will be 初始化 before long
+        self.list_dir = None
+        self.files = None
+        self.dirs = None
+
+        if not exists(self.root_dir):
+            os.mkdir(self.root_dir)
+            logger.info('创建root_dir {}', self.root_dir)
+
+        self.scan()
+
+    # todo 支持数字下标
+    def __getitem__(self, name: str) -> IO:
+        name = join(self.root_dir, name)
+        if name in self.files.keys():
+            if self.files[name] is None or self.files[name].closed:
+                self.files[name] = open(name, self.mode, encoding=self.encoding)
+            return self.files[name]
+        elif name in self.dirs.keys():
+            return self.dirs[name]
+        else:
+            raise KeyError('不存在此文件')
+
+    # todo 可以设置`ResourceRoot`
+    def __setitem__(self, filename: str, value: Union[str, IO]):
+        """默认调用`self.save`"""
+        self.save(filename, value)
+
+        # todo 低效率
+        self.scan()
+
+    def __contains__(self, name: str):
+        return name in self.list_dir
+
+    def __str__(self):
+        # return '<ResourceRoot root_dir=\'{}\'>'.format(self.root_dir)
+        return '<ResourceRoot {!r}>'.format(self.list_dir)
+
+    def save(self, filename, streaming: Union[str, IO, dict], **kwargs):
+        """传入文件名,和一个流或者字符串,保存文件后,流将被关闭
+
+        :param filename: 文件名你要保存在这个`ResourceRoot`下的
+        :param streaming: 它可能是一个`str`对象, 或者`IO`流对象, 或者是一个`dict`字典,如果传入`dict`则会被转换成`json`文本保存
+        """
+        f = open(join(self.root_dir, filename),
+                 mode=kwargs.get('mode', 'w'),
+                 encoding=kwargs.get('encoding', self.encoding))
+        # 把字典转换为字符串
+        if isinstance(streaming, dict):
+            streaming = json.dumps(streaming, indent=4)
+        # 把字符串转换为流
+        if not isinstance(streaming, io.IOBase):
+            streaming = io.StringIO(streaming)
+        for chuck in streaming.read(self.chuck):
+            f.write(chuck)
+        f.close()
+        streaming.close()
+        logger.debug('保存文件[{}]', join(self.root_dir, filename))
 
 
 def get_headers():
@@ -228,7 +386,7 @@ class Spider:
 
         @property
         def html(self) -> HTML:
-            if not self.__html:
+            if self.__html is None:
                 self.__html = HTML(self.text)
             return self.__html
 
@@ -237,7 +395,7 @@ class Spider:
             self.__html = value
 
         def xpath(self, exp):
-            return self.__html.xpath(exp)
+            return self.html.xpath(exp)
 
         @property
         def json(self, *args, slices=None, **kwargs) -> dict:
@@ -298,7 +456,9 @@ class Spider:
         while retry:
             try:
                 response = self.Response(handle(url, **kwargs))
-                if response.status_code == 200:
+                if len(response.response.history) >= 2:
+                    logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
+                if response.status_code == requests.codes.ok:
                     self.cache.cache(url, response, alive_time)
                 else:
                     logger.debug('状态码[{}], 取消缓存', response.status_code)
@@ -344,10 +504,24 @@ class Spider:
         self.session.close()
 
 
-if __name__ == '__main__':
+def test_resource():
+    res = ResourceRoot('resources')
+    logger.debug('list_dir: {}', res)
+    res['streaming.txt'] = 'streaming.txt'
+    res.save('test_json', {'date': ['t', 'e', 's', 't']})
+    # f.seek(0)
+    # print(f.read())
+    pass
+
+
+def test_spider():
     spider = Spider()
-    resp = spider.get('http://www.baidu.com/', '1.png', timeout=1, cache_enable=False)
+    resp = spider.get('http://www.baidu.com/', '1.png', timeout=1)
     resp.encoding = 'gb2313'
     # print(resp.text)
     print('=====================')
     spider.cache.save()
+
+
+if __name__ == '__main__':
+    test_json_file()
