@@ -58,7 +58,6 @@ class FormatFilter(logging.Filter):
         return True
 
 
-# todo logger到底怎么用啊
 # todo 继承`StreamHandler`实现详细`log`与精简`log`
 # todo 记录错误单独保存文件
 def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
@@ -103,7 +102,7 @@ logger = init_logger()
 
 class JsonFile:
 
-    def __init__(self, file: IO, obj: dict = None, overwrite=True, indent=4):
+    def __init__(self, file: IO, obj: dict = None, indent=4):
         """Json与文件同步序列化
         注意不要使用此构造方法,应当使用工厂方法
 
@@ -164,7 +163,7 @@ class JsonFile:
 
     def dump(self):
         self.f.seek(0)
-        json.dump(self.obj, self.f, indent=4)
+        json.dump(self.obj, self.f, indent=4, ensure_ascii=False)
 
     def close(self):
         self.dump()
@@ -187,7 +186,7 @@ def test_json2():
     jf2.close()
 
 
-# todo 管理文件
+# todo 管理文件夹
 # 考虑使用`property`
 class ResourceRoot:
     def scan(self):
@@ -236,7 +235,7 @@ class ResourceRoot:
             raise KeyError('不存在此文件')
 
     # todo 可以设置`ResourceRoot`
-    def __setitem__(self, filename: str, value: Union[str, IO]):
+    def __setitem__(self, filename: str, value: Union[str, IO, dict]):
         """默认调用`self.save`"""
         self.save(filename, value)
 
@@ -261,12 +260,13 @@ class ResourceRoot:
                  encoding=kwargs.get('encoding', self.encoding))
         # 把字典转换为字符串
         if isinstance(streaming, dict):
-            streaming = json.dumps(streaming, indent=4)
+            streaming = json.dumps(streaming, indent=4, ensure_ascii=False)
         # 把字符串转换为流
         if not isinstance(streaming, io.IOBase):
             streaming = io.StringIO(streaming)
-        for chuck in streaming.read(self.chuck):
-            f.write(chuck)
+        # for chuck in streaming.read(self.chuck):
+        #     f.write(chuck)
+        f.write(streaming.read())
         f.close()
         streaming.close()
         logger.debug('保存文件[{}]', join(self.root_dir, filename))
@@ -300,7 +300,7 @@ class Spider:
             if not exists(join(cache_dir, self.__cache_json_name)):
                 try:
                     with open(join(self.__cache_dir, self.__cache_json_name), 'a+', encoding='utf8') as f:
-                        dump({"cached_files": {}}, f, indent=4)
+                        dump({"cached_files": {}}, f, indent=4, ensure_ascii=False)
                 except IOError as e:
                     logger.error('IO错误{}', join(self.__cache_dir, self.__cache_json_name))
                     raise e
@@ -364,7 +364,7 @@ class Spider:
         def save(self):
             try:
                 with open(join(self.__cache_dir, self.__cache_json_name), 'r+', encoding='utf8') as f:
-                    dump(self.__cache_json, f, indent=4)
+                    dump(self.__cache_json, f, indent=4, ensure_ascii=False)
             except IOError as e:
                 logger.error('IO错误: {}', join(self.__cache_dir, self.__cache_json_name))
                 raise e
@@ -520,7 +520,6 @@ def test_resource():
     res.save('test_json', {'date': ['t', 'e', 's', 't']})
     # f.seek(0)
     # print(f.read())
-    pass
 
 
 def test_spider():
