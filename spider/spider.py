@@ -11,10 +11,11 @@ from os.path import exists
 from os.path import join
 from time import localtime
 from types import MethodType
-from typing import Union, IO, Iterable
+from typing import Union, IO
 from urllib.parse import urljoin
 
 import requests
+from fake_useragent import UserAgent
 from lxml.etree import HTML
 
 
@@ -98,92 +99,6 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
 
 
 logger = init_logger()
-
-
-class JsonFile:
-
-    def __init__(self, file: IO, obj: dict = None, indent=4):
-        """Json与文件同步序列化
-        注意不要使用此构造方法,应当使用工厂方法
-
-        :param file: 一个文件流
-        :param obj: 一个字典
-        :param indent: tab的长度
-        """
-        if not file.writable():
-            raise IOError('文件不可写<{}>'.format(file.name))
-        if not file.seekable():
-            raise IOError('文件不可查<{}>'.format(file.name))
-        if not file.readable():
-            raise IOError('文件不可读<{}>'.format(file.name))
-        self.f = file
-        self.obj = obj
-        self.indent = indent
-
-    @classmethod
-    def from_newfile(cls, filename, mode='w', encoding='utf8'):
-        f = open(filename, mode=mode, encoding=encoding)
-        return cls(f, {})
-
-    @classmethod
-    def from_filename(cls, filename, mode='r+', encoding='utf8'):
-        f = open(filename, mode=mode, encoding=encoding)
-        c = cls(f)
-        c.load(f)
-        return c
-
-    @classmethod
-    def from_streaming(cls, streaming):
-        c = cls(streaming, {})
-        return c
-
-    def keys(self) -> Iterable:
-        return self.obj.keys()
-
-    def items(self) -> (Iterable, Iterable):
-        return self.items()
-
-    def __len__(self) -> int:
-        return self.obj.__len__()
-
-    def __setitem__(self, k, v):
-        return self.obj.__setitem__(k, v)
-
-    def __getitem__(self, k):
-        return self.obj.__getitem__(k)
-
-    def __delitem__(self, v):
-        return self.obj.__delitem__(v)
-
-    def __str__(self) -> str:
-        return super().__str__()
-
-    def load(self, streaming: IO):
-        self.obj = json.load(streaming)
-
-    def dump(self):
-        self.f.seek(0)
-        json.dump(self.obj, self.f, indent=4, ensure_ascii=False)
-
-    def close(self):
-        self.dump()
-        self.f.close()
-
-
-def test_json_file():
-    # res = ResourceRoot('resource')
-    # f = res['test_json_file.json']
-    # obj = {'data': [1, 23]}
-    # jf = JsonFile(f, obj)
-    # jf['data'] = '1'
-    # jf.close()
-    test_json2()
-
-
-def test_json2():
-    jf2 = JsonFile.from_filename('resources/testjson2.json')
-    jf2['title'] = 'changed testjson2'
-    jf2.close()
 
 
 # todo 管理文件夹
@@ -272,9 +187,8 @@ class ResourceRoot:
         logger.debug('保存文件[{}]', join(self.root_dir, filename))
 
 
-def get_headers():
-    return {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
-                          ' Chrome/86.0.4240.198 Safari/537.36'}
+def get_random_header():
+    return {'User-Agent': str(UserAgent().random)}
 
 
 class Spider:
@@ -426,10 +340,16 @@ class Spider:
             return re.search(pattern, self.text, flags=flags)
 
     def __init__(self):
-        self.headers_generator = get_headers
+        self.headers_generator = get_random_header
         self.cache = Spider.Cache()
         self.session = requests.session()
         self.update_headers()
+
+    def set_cookie(self, cookie):
+        self.session.cookies = requests.sessions.cookiejar_from_dict(
+            cookie,
+            cookiejar=None,
+            overwrite=True)
 
     # todo 对于失败的`url`保存到另一个`log`文件
     def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
@@ -467,7 +387,7 @@ class Spider:
                 response = self.Response(handle(url, **kwargs))
                 if len(response.response.history) >= 2:
                     logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
-                if response.status_code == requests.codes.ok:
+                if response.response.ok:
                     self.cache.cache(url, response, alive_time)
                 else:
                     logger.debug('状态码[{}], 取消缓存', response.status_code)
@@ -485,12 +405,13 @@ class Spider:
                 retry -= 1
 
     def get(self, *args, **kwargs) -> Response:
-        """
-        args `url`的各个路径:\n
-        kwargs: 包含`requests`库所有选项\n
-        alive_time: 缓存存活日期\n
-        cache_enable: 是否使用缓存\n
-        sep_time: 间隔时间\n
+        """获取网页
+
+        :arg args
+        :param kwargs: 包含`requests`库所有选项
+              alive_time: 缓存存活日期
+              cache: 是否使用缓存
+              sep_time: 间隔时间
         """
         # 获取`alive_time`, `url`参数
         return self.__get_or_post(self.session.get, *args, **kwargs)
@@ -532,4 +453,4 @@ def test_spider():
 
 
 if __name__ == '__main__':
-    test_json_file()
+    ...
