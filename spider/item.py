@@ -154,7 +154,7 @@ class Test:
         print('mp={}'.format(mp))
 
     def test_json2(self):
-        jf2 = JsonFile.from_filename('resources/testjson2.json')
+        jf2 = JsonFile.from_filename('resource/testjson2.json')
         jf2['title'] = 'changeadsfsdafdsd testjson2'
         jf2.close()
 

@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 import re
+import shutil
 import uuid
 from json import load, dump, loads
 from os.path import exists
@@ -101,9 +102,15 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
 logger = init_logger()
 
 
-# todo 管理文件夹
+class ResourceBase:
+    ...
+
+    def serialize_as_folder(self, path):
+        pass
+
+
 # 考虑使用`property`
-class ResourceRoot:
+class ResourceRoot(ResourceBase):
     def scan(self):
         self.list_dir = list(map(lambda name: join(self.root_dir, name), os.listdir(self.root_dir)))
 
@@ -137,7 +144,6 @@ class ResourceRoot:
 
         self.scan()
 
-    # todo 支持数字下标
     def __getitem__(self, name: str) -> IO:
         name = join(self.root_dir, name)
         if name in self.files.keys():
@@ -149,8 +155,7 @@ class ResourceRoot:
         else:
             raise KeyError('不存在此文件')
 
-    # todo 可以设置`ResourceRoot`
-    def __setitem__(self, filename: str, value: Union[str, IO, dict]):
+    def __setitem__(self, filename: str, value: Union[str, IO, dict, ResourceBase]):
         """默认调用`self.save`"""
         self.save(filename, value)
 
@@ -164,27 +169,35 @@ class ResourceRoot:
         # return '<ResourceRoot root_dir=\'{}\'>'.format(self.root_dir)
         return '<ResourceRoot {!r}>'.format(self.list_dir)
 
-    def save(self, filename, streaming: Union[str, IO, dict], **kwargs):
+    def serialize_as_folder(self, path):
+        shutil.copytree(self.rel_root_dir, os.path.realpath(path))
+
+    def save(self, name, value: Union[str, IO, dict, ResourceBase], **kwargs):
         """传入文件名,和一个流或者字符串,保存文件后,流将被关闭
 
-        :param filename: 文件名你要保存在这个`ResourceRoot`下的
-        :param streaming: 它可能是一个`str`对象, 或者`IO`流对象, 或者是一个`dict`字典,如果传入`dict`则会被转换成`json`文本保存
+        :param name: 文件名你要保存在这个`ResourceRoot`下的
+        :param value: 它可能是一个`str`对象, 或者`IO`流对象, 或者是一个`dict`字典,如果传入`dict`则会被转换成`json`文本保存
         """
-        f = open(join(self.root_dir, filename),
-                 mode=kwargs.get('mode', 'w'),
-                 encoding=kwargs.get('encoding', self.encoding))
-        # 把字典转换为字符串
-        if isinstance(streaming, dict):
-            streaming = json.dumps(streaming, indent=4, ensure_ascii=False)
-        # 把字符串转换为流
-        if not isinstance(streaming, io.IOBase):
-            streaming = io.StringIO(streaming)
-        # for chuck in streaming.read(self.chuck):
-        #     f.write(chuck)
-        f.write(streaming.read())
-        f.close()
-        streaming.close()
-        logger.debug('保存文件[{}]', join(self.root_dir, filename))
+        # 如果是 `ResourceBase` 类
+        if isinstance(value, ResourceBase):
+            value.serialize_as_folder(join(self.root_dir, name))
+            logger.debug('保存目录成功[{}]', join(self.root_dir, name))
+        else:  # 是字符串或流
+            f = open(join(self.root_dir, name),
+                     mode=kwargs.get('mode', 'w'),
+                     encoding=kwargs.get('encoding', self.encoding))
+            # 把字典转换为字符串
+            if isinstance(value, dict):
+                value = json.dumps(value, indent=4, ensure_ascii=False)
+            # 把字符串转换为流
+            if not isinstance(value, io.IOBase):
+                value = io.StringIO(value)
+            # for chuck in streaming.read(self.chuck):
+            #     f.write(chuck)
+            f.write(value.read())
+            f.close()
+            value.close()
+            logger.debug('保存文件成功[{}]', join(self.root_dir, name))
 
 
 def get_random_header():
@@ -436,9 +449,16 @@ class Spider:
 
 def test_resource():
     res = ResourceRoot('resource')
-    logger.debug('list_dir: {}', res)
-    res['streaming.txt'] = 'streaming.txt'
-    res.save('test_json', {'date': ['t', 'e', 's', 't']})
+    # logger.debug('list_dir: {}', res.list_dir)
+    # logger.debug('files: {}', str(res.files))
+    # logger.debug('dirs: {}', str(res.dirs))
+    # logger.debug('root_dir: {}', str(res.root_dir))
+    hello = res['hello']
+
+    # res2 = ResourceRoot('res2')
+    # res2['hello2'] = res
+    logger.debug(hello)
+
     # f.seek(0)
     # print(f.read())
 
@@ -453,4 +473,4 @@ def test_spider():
 
 
 if __name__ == '__main__':
-    ...
+    test_resource()
