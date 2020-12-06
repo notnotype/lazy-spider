@@ -103,7 +103,7 @@ logger = init_logger()
 
 
 class ResourceBase:
-    ...
+    """ResourceRoot的无意义基类"""
 
     def serialize_as_folder(self, path):
         pass
@@ -112,6 +112,7 @@ class ResourceBase:
 # 考虑使用`property`
 class ResourceRoot(ResourceBase):
     def scan(self):
+        """扫描当前文件夹, 更新`list_dir`, `files`, `dirs`"""
         self.list_dir = list(map(lambda name: join(self.root_dir, name), os.listdir(self.root_dir)))
 
         file_names = list(filter(lambda name: os.path.isfile(name), self.list_dir))
@@ -170,10 +171,11 @@ class ResourceRoot(ResourceBase):
         return '<ResourceRoot {!r}>'.format(self.list_dir)
 
     def serialize_as_folder(self, path):
+        """把自己的一个复制复制到一个位置"""
         shutil.copytree(self.rel_root_dir, os.path.realpath(path))
 
     def save(self, name, value: Union[str, IO, dict, ResourceBase], **kwargs):
-        """传入文件名,和一个流或者字符串,保存文件后,流将被关闭
+        """传入文件名,和一个`流`, 或者`字符串`, 或者`ResourceRoot`, 保存文件后,流将被关闭
 
         :param name: 文件名你要保存在这个`ResourceRoot`下的
         :param value: 它可能是一个`str`对象, 或者`IO`流对象, 或者是一个`dict`字典,如果传入`dict`则会被转换成`json`文本保存
@@ -201,6 +203,7 @@ class ResourceRoot(ResourceBase):
 
 
 def get_random_header():
+    """返回一个随机的头"""
     return {'User-Agent': str(UserAgent().random)}
 
 
@@ -267,7 +270,7 @@ class Spider:
             else:
                 return None
 
-        def cache(self, name: str, obj: object, alive_time: datetime.datetime) -> bool:
+        def cache(self, name: str, obj, alive_time: datetime.datetime) -> bool:
             self.__cache_json['cached_files'][name] = {
                 "filename": str(uuid.uuid4()),
                 "typing": str(obj.__class__),
@@ -336,7 +339,7 @@ class Spider:
         @property
         def json(self, *args, slices=None, **kwargs) -> dict:
             """
-            slices: (start, end)字符串分片后在进行解码
+            :arg slices: (start, end)字符串分片后在进行解码
             """
             if not self.__json:
                 try:
@@ -358,13 +361,15 @@ class Spider:
         self.session = requests.session()
         self.update_headers()
 
-    def set_cookie(self, cookie):
+    def set_cookie(self, cookie: str):
+        """设置cookie
+        :arg cookie: 一个 `cookie` 字符串
+        """
         self.session.cookies = requests.sessions.cookiejar_from_dict(
             cookie,
             cookiejar=None,
             overwrite=True)
 
-    # todo 对于失败的`url`保存到另一个`log`文件
     def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
         """
 
@@ -414,6 +419,7 @@ class Spider:
                     logger.error('取消重试---' + str(4 - retry))
                     raise e
                 logger.error('HTTP报错---' + str(4 - retry))
+                # todo 对于失败的`url`保存到另一个`log`文件
             finally:
                 retry -= 1
 
@@ -440,6 +446,7 @@ class Spider:
         return self.__get_or_post(self.session.post, *args, **kwargs)
 
     def update_headers(self):
+        """调用`self.headers_generator`来更新头"""
         if self.headers_generator:
             self.session.headers.update(self.headers_generator())
 
