@@ -37,8 +37,8 @@ def limit_text(s: str, max_len):
 
 def elem_tostring(elem):
     """HTML元素转换成字符串"""
-    elems_text_nodes = elem.xpath(".//text()")
-    beautiful_text = ''.join([elem.strip() for elem in elems_text_nodes])
+    elem_text_nodes = elem.xpath(".//text()")
+    beautiful_text = ''.join([elem.strip() for elem in elem_text_nodes])
     return beautiful_text
 
 
@@ -123,10 +123,10 @@ class ResourceRoot(ResourceBase):
     def __init__(self, root_dir='resources', chuck=2048, mode='r+', encoding='utf8'):
         """把一个文件夹抽象成一个类,可以保存和读取资源文件
 
-        :param root_dir: 默认为`resources`
-        :param chuck: 默认读取写入的区块
-        :param mode: 文件打开模式  默认`r+`
-        :param encoding: 文件编码  默认`utf8`
+        :key root_dir: 默认为`resources`
+        :key chuck: 默认读取写入的区块
+        :key mode: 文件打开模式  默认`r+`
+        :key encoding: 文件编码  默认`utf8`
         """
         self.rel_root_dir = root_dir
         self.chuck = chuck
@@ -211,6 +211,14 @@ class Spider:
     # todo 针对每次请求不同的`header`来重新加载缓存
     # todo 增加字段`data`,存`post`字段
     # todo 增加字段`header`, 存header
+
+    # 强制使用缓存
+    FORCE_CACHE = 2
+    # 运行使用缓存
+    ENABLE_CACHE = 1
+    # 从不使用缓存
+    DISABLE_CACHE = 0
+
     class Cache:
         """
         __init__
@@ -249,11 +257,11 @@ class Spider:
                 logger.error('未知错误在{}', join(cache_dir, self.__cache_json_name))
                 raise e
 
-        def is_cached(self, name: str) -> bool:
+        def is_cached(self, name: str, ignore_date=False) -> bool:
             if name in self.__cache_json['cached_files'].keys():
                 item = self.__cache_json['cached_files'][name]
                 alive_time: datetime.datetime = datetime.datetime.strptime(item['alive_time'], '%Y-%m-%d %H:%M:%S')
-                if alive_time > datetime.datetime.now():
+                if alive_time > datetime.datetime.now() or ignore_date:
                     return True
                 else:
                     logger.debug('存活时间已过,重新缓存')
@@ -261,8 +269,14 @@ class Spider:
             else:
                 return False
 
-        def from_cache(self, name: str) -> object:
-            if self.is_cached(name):
+        def from_cache(self, name: str, force=False) -> object:
+            """
+
+            :param name:
+            :param force: 忽略时间过期, 强制从缓存读取
+            :return:
+            """
+            if self.is_cached(name, ignore_date=force):
                 item = self.__cache_json['cached_files'][name]
                 filename = item['filename']
                 with open(join(self.__cache_dir, filename), 'rb') as f:
@@ -270,7 +284,9 @@ class Spider:
             else:
                 return None
 
-        def cache(self, name: str, obj, alive_time: datetime.datetime) -> bool:
+        def cache(self, name: str, obj, alive_time: Union[datetime.datetime, int]) -> bool:
+            if isinstance(alive_time, int):
+                alive_time = datetime.datetime.now() + datetime.timedelta(days=alive_time)
             self.__cache_json['cached_files'][name] = {
                 "filename": str(uuid.uuid4()),
                 "typing": str(obj.__class__),
@@ -339,7 +355,7 @@ class Spider:
         @property
         def json(self, *args, slices=None, **kwargs) -> dict:
             """
-            :arg slices: (start, end)字符串分片后在进行解码
+            :keyword slices: (start, end)字符串分片后在进行解码
             """
             if not self.__json:
                 try:
@@ -363,8 +379,9 @@ class Spider:
 
     def set_cookie(self, cookie: str):
         """设置cookie
-        :arg cookie: 一个 `cookie` 字符串
+        :param cookie: 一个 `cookie` 字符串
         """
+        cookie = {'Cookie': cookie}
         self.session.cookies = requests.sessions.cookiejar_from_dict(
             cookie,
             cookiejar=None,
@@ -373,12 +390,14 @@ class Spider:
     def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
         """
 
+        :param handle 处理请求的一个函数
         :param args `url`的各个路径:
         :param kwargs: 包含`requests`库所有选项
-        :param alive_time: 缓存存活日期
-        :param cache_enable: 是否使用缓存
-        :param sep_time: 间隔时间
-        :return:
+        :keyword alive_time: Union[datetime, int]缓存存活日期
+        :keyword cache: 是否使用缓存
+        :keyword sep_time: 间隔时间
+
+        :return: Union[Response, requests.Response, object]
         """
         # 获取`alive_time`, `url`参数
         kwargs.setdefault('alive_time', datetime.datetime.now() + datetime.timedelta(days=3))
@@ -394,9 +413,11 @@ class Spider:
             url = 'http://' + url
             logger.debug('url没有添加协议, 使用[http]协议代替')
 
-        if self.cache.is_cached(url) and cache_enable:
+        is_force_cache = cache_enable == self.FORCE_CACHE
+
+        if self.cache.is_cached(url, ignore_date=is_force_cache) and cache_enable:
             logger.debug('从缓存: {} <- {}', limit_text(url, 200), '文件')
-            return self.cache.from_cache(url)
+            return self.cache.from_cache(url, force=is_force_cache)
         logger.info('下载: {}', limit_text(url, 200))
 
         retry = 3
@@ -423,25 +444,30 @@ class Spider:
             finally:
                 retry -= 1
 
-    def get(self, *args, **kwargs) -> Response:
+    def get(self, *args, **kwargs) -> [Response, requests.Response, object]:
         """获取网页
 
-        :arg args
+        :param args: (元组)`url`的各个路径:
         :param kwargs: 包含`requests`库所有选项
-              alive_time: 缓存存活日期
-              cache: 是否使用缓存
-              sep_time: 间隔时间
+        :keyword alive_time: Union[datetime, int]缓存存活日期
+        :keyword cache: 是否使用缓存
+        :keyword sep_time: 间隔时间
+
+        :return: Union[Response, requests.Response, object]
         """
         # 获取`alive_time`, `url`参数
         return self.__get_or_post(self.session.get, *args, **kwargs)
 
     def post(self, *args, **kwargs) -> Response:
-        """
-        args `url`的各个路径:\n
-        kwargs: 包含`requests`库所有选项\n
-        alive_time: 缓存存活日期\n
-        cache_enable: 是否使用缓存\n
-        sep_time: 间隔时间\n
+        """获取网页
+
+        :param args: (元组)`url`的各个路径:
+        :param kwargs: 包含`requests`库所有选项
+        :keyword alive_time: Union[datetime, int]缓存存活日期
+        :keyword cache: 是否使用缓存
+        :keyword sep_time: 间隔时间
+
+        :return: Union[Response, requests.Response, object]
         """
         return self.__get_or_post(self.session.post, *args, **kwargs)
 
