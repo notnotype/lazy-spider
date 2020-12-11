@@ -19,9 +19,9 @@ def hg():
 spider.headers_generator = hg
 
 if __name__ == "__main__":
-    for i in range(10):
+    for i in range(10, 20):
         tmp = '{:13.13}'.format(time.time()).replace('.', '')
-        res[str(i) + 'jpg'] = spider.get(
+        res[str(i) + '.jpg'] = spider.get(
             'https://setu.awsl.ee/api/setu!?w=' + tmp,
             cache=Spider.DISABLE_CACHE).content
         time.sleep(0.1)

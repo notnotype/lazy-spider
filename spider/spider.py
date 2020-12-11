@@ -152,23 +152,9 @@ class ResourceRoot(ResourceBase):
     def mode(self, value):
         self.__mode = value
 
-    # @property
-    # def encoding(self):
-    #     return self.__encoding
-    #
-    # @encoding.setter
-    # def encoding(self, value):
-    #     self.__encoding = value
-
-    # def is_raw_mode(self):
-    #     return 'b' in self.mode
-    #
-    # def set_raw_mode(self):
-    #     if not self.is_raw_mode():
-    #         self.mode = self.mode + 'b'
-
     @staticmethod
     def __guess_file_mode(filename):
+        """根据文件名, 或者 `url` 来猜测使用哪一种模式打开文件"""
         if filename.lower().endswith((
                 '.jpg', '.png'
         )):
@@ -182,7 +168,7 @@ class ResourceRoot(ResourceBase):
         if name in self.files.keys():
             if self.files[name] is None or self.files[name].closed:
                 mode = self.__guess_file_mode(name)
-                if 'b' in mode:
+                if 'b' not in mode:
                     self.files[name] = open(name, mode=mode)
                 else:
                     self.files[name] = open(name, mode=mode, encoding='w')
@@ -206,25 +192,13 @@ class ResourceRoot(ResourceBase):
         # return '<ResourceRoot root_dir=\'{}\'>'.format(self.root_dir)
         return '<ResourceRoot {!r}>'.format(self.list_dir)
 
-    # todo 似乎是一个没有什么用的特性
-    def open(self, path, mode=None, encoding=None):
-        """如果, 使用二进制模式打开文件, 则忽略 `encoding` 参数, 默认调用 `ResourceRoot` 实例的
-            属性
-
-        """
-        mode = mode if mode else self.mode
-        encoding = encoding if encoding else 'w'
-        f = open(path, mode=mode, encoding=encoding)
-        return f
-
     def serialize_as_folder(self, path):
         """把自己的一个复制复制到一个位置"""
         shutil.copytree(self.rel_root_dir, os.path.realpath(path))
 
     def save(self, name, value: Union[str, IO, dict, ResourceBase, bytes], **kwargs):
         """传入文件名,和一个`流`, 或者`字符串`, 或者`ResourceRoot`, 保存文件后,流将被关闭
-            `save` 函数 首先使用 kwargs 里面的参数 来开启文件, 对于那些没指定的参数, 则使用
-            `ResourceRoot` 对象 默认的数值
+            自动覆盖
 
         :param name: 文件名你要保存在这个`ResourceRoot`下的
         :param value: 它可能是一个`str`对象, 或者`IO`流对象, 或者是一个`dict`字典,如果传入`dict`则会被转换成`json`文本保存
@@ -238,22 +212,19 @@ class ResourceRoot(ResourceBase):
             encoding = kwargs.get('encoding', None)
             # 如果是字典, 则把字典转换为字符串
             if isinstance(value, dict):
-                mode = kwargs.get('mode', 'w')
-                f = open(path, mode=mode, encoding=encoding)
+                f = open(path, mode='w', encoding=encoding)
                 json.dump(value, f, indent=4, ensure_ascii=False)
-                return
                 # 如果是字符串
             elif isinstance(value, str):
-                mode = kwargs.get('mode', 'w')
-                f = open(path, mode=mode, encoding=encoding)
+                f = open(path, mode='w', encoding=encoding)
                 f.write(value)
             elif isinstance(value, bytes):
-                mode = kwargs.get('mode', 'wb')
-                if 'b' not in mode:
-                    raise RuntimeError('传入bytes类型必须二进制模式')
-                f = open(path, mode)
-                # noinspection PyTypeChecker
+                f = open(path, 'wb')
                 f.write(value)
+            # 如果是流
+            elif isinstance(value, IO):
+                f = open(path, 'wb')
+                f.write(value.read())
             else:
                 raise RuntimeError('不支持传入此类型{}'.format(type(value)))
             logger.debug('保存文件成功[{}]', join(self.root_dir, name))
@@ -273,7 +244,7 @@ class Spider:
     FORCE_CACHE = 2
     # 运行使用缓存
     ENABLE_CACHE = 1
-    # 从不使用缓存
+    # 不使用缓存
     DISABLE_CACHE = 0
 
     class Cache:
@@ -371,6 +342,13 @@ class Spider:
             except IOError as e:
                 logger.error('IO错误: {}', join(self.__cache_dir, self.__cache_json_name))
                 raise e
+
+        def clear_cache(self, name: str):
+            if name in self.__cache_json['cached_files']:
+                del self.__cache_json['cached_files'][name]
+
+        def clear_all(self):
+            self.__cache_json = {"cached_files": {}}
 
     # done `lxml`
     class Response:
@@ -476,10 +454,15 @@ class Spider:
 
         is_force_cache = cache_enable == self.FORCE_CACHE
 
+        # 如果 `is_force_cache` is True 则, 不论缓存是否过期, 都从缓存加载
         if self.cache.is_cached(url, ignore_date=is_force_cache) and cache_enable:
             logger.debug('从缓存: {} <- {}', limit_text(url, 200), '文件')
             return self.cache.from_cache(url, force=is_force_cache)
         logger.info('下载: {}', limit_text(url, 200))
+
+        if cache_enable == Spider.DISABLE_CACHE:
+            # 如果禁用这个url的缓存, 则将之从缓存文件删除
+            self.cache.clear_cache(url)
 
         retry = 3
         while retry:
@@ -488,7 +471,8 @@ class Spider:
                 if len(response.response.history) >= 2:
                     logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
                 if response.response.ok:
-                    self.cache.cache(url, response, alive_time)
+                    if cache_enable == Spider.ENABLE_CACHE:
+                        self.cache.cache(url, response, alive_time)
                 else:
                     logger.debug('状态码[{}], 取消缓存', response.status_code)
                 return response
