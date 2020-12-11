@@ -119,13 +119,12 @@ class ResourceRoot(ResourceBase):
         dir_names = [_dir for _dir in filter(lambda name: os.path.isdir(name), self.list_dir)]
         self.dirs = {dir_name: ResourceRoot(dir_name) for dir_name in dir_names}
 
-    def __init__(self, root_dir='resources', chuck=2048, mode='r+', encoding='utf8'):
+    def __init__(self, root_dir='resources', chuck=2048, mode='r+'):
         """把一个文件夹抽象成一个类,可以保存和读取资源文件
 
         :key root_dir: 默认为`resources`
         :key chuck: 默认读取写入的区块
         :key mode: 文件打开模式  默认`r+`
-        :key encoding: 文件编码  默认`utf8`
         """
         self.rel_root_dir = root_dir
         self.chuck = chuck
