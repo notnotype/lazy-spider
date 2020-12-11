@@ -1,5 +1,4 @@
 import datetime
-import io
 import json
 import logging
 import os
@@ -131,8 +130,8 @@ class ResourceRoot(ResourceBase):
         self.rel_root_dir = root_dir
         self.chuck = chuck
         self.root_dir = os.path.abspath(root_dir)
-        self.mode = mode
-        self.encoding = encoding
+        self.__mode = mode
+        # self.__encoding = encoding
 
         # These Attributes will be 初始化 before long
         self.list_dir = None
@@ -145,18 +144,55 @@ class ResourceRoot(ResourceBase):
 
         self.scan()
 
+    @property
+    def mode(self):
+        return self.__mode
+
+    @mode.setter
+    def mode(self, value):
+        self.__mode = value
+
+    # @property
+    # def encoding(self):
+    #     return self.__encoding
+    #
+    # @encoding.setter
+    # def encoding(self, value):
+    #     self.__encoding = value
+
+    # def is_raw_mode(self):
+    #     return 'b' in self.mode
+    #
+    # def set_raw_mode(self):
+    #     if not self.is_raw_mode():
+    #         self.mode = self.mode + 'b'
+
+    @staticmethod
+    def __guess_file_mode(filename):
+        if filename.lower().endswith((
+                '.jpg', '.png'
+        )):
+            mode = 'wb'
+        else:
+            mode = 'w'
+        return mode
+
     def __getitem__(self, name: str) -> IO:
         name = join(self.root_dir, name)
         if name in self.files.keys():
             if self.files[name] is None or self.files[name].closed:
-                self.files[name] = open(name, self.mode, encoding=self.encoding)
+                mode = self.__guess_file_mode(name)
+                if 'b' in mode:
+                    self.files[name] = open(name, mode=mode)
+                else:
+                    self.files[name] = open(name, mode=mode, encoding='w')
             return self.files[name]
         elif name in self.dirs.keys():
             return self.dirs[name]
         else:
             raise KeyError('不存在此文件')
 
-    def __setitem__(self, filename: str, value: Union[str, IO, dict, ResourceBase]):
+    def __setitem__(self, filename: str, value: Union[str, IO, dict, ResourceBase, bytes]):
         """默认调用`self.save`"""
         self.save(filename, value)
 
@@ -170,12 +206,25 @@ class ResourceRoot(ResourceBase):
         # return '<ResourceRoot root_dir=\'{}\'>'.format(self.root_dir)
         return '<ResourceRoot {!r}>'.format(self.list_dir)
 
+    # todo 似乎是一个没有什么用的特性
+    def open(self, path, mode=None, encoding=None):
+        """如果, 使用二进制模式打开文件, 则忽略 `encoding` 参数, 默认调用 `ResourceRoot` 实例的
+            属性
+
+        """
+        mode = mode if mode else self.mode
+        encoding = encoding if encoding else 'w'
+        f = open(path, mode=mode, encoding=encoding)
+        return f
+
     def serialize_as_folder(self, path):
         """把自己的一个复制复制到一个位置"""
         shutil.copytree(self.rel_root_dir, os.path.realpath(path))
 
-    def save(self, name, value: Union[str, IO, dict, ResourceBase], **kwargs):
+    def save(self, name, value: Union[str, IO, dict, ResourceBase, bytes], **kwargs):
         """传入文件名,和一个`流`, 或者`字符串`, 或者`ResourceRoot`, 保存文件后,流将被关闭
+            `save` 函数 首先使用 kwargs 里面的参数 来开启文件, 对于那些没指定的参数, 则使用
+            `ResourceRoot` 对象 默认的数值
 
         :param name: 文件名你要保存在这个`ResourceRoot`下的
         :param value: 它可能是一个`str`对象, 或者`IO`流对象, 或者是一个`dict`字典,如果传入`dict`则会被转换成`json`文本保存
@@ -185,20 +234,28 @@ class ResourceRoot(ResourceBase):
             value.serialize_as_folder(join(self.root_dir, name))
             logger.debug('保存目录成功[{}]', join(self.root_dir, name))
         else:  # 是字符串或流
-            f = open(join(self.root_dir, name),
-                     mode=kwargs.get('mode', 'w'),
-                     encoding=kwargs.get('encoding', self.encoding))
-            # 把字典转换为字符串
+            path = join(self.root_dir, name)
+            encoding = kwargs.get('encoding', None)
+            # 如果是字典, 则把字典转换为字符串
             if isinstance(value, dict):
-                value = json.dumps(value, indent=4, ensure_ascii=False)
-            # 把字符串转换为流
-            if not isinstance(value, io.IOBase):
-                value = io.StringIO(value)
-            # for chuck in streaming.read(self.chuck):
-            #     f.write(chuck)
-            f.write(value.read())
-            f.close()
-            value.close()
+                mode = kwargs.get('mode', 'w')
+                f = open(path, mode=mode, encoding=encoding)
+                json.dump(value, f, indent=4, ensure_ascii=False)
+                return
+                # 如果是字符串
+            elif isinstance(value, str):
+                mode = kwargs.get('mode', 'w')
+                f = open(path, mode=mode, encoding=encoding)
+                f.write(value)
+            elif isinstance(value, bytes):
+                mode = kwargs.get('mode', 'wb')
+                if 'b' not in mode:
+                    raise RuntimeError('传入bytes类型必须二进制模式')
+                f = open(path, mode)
+                # noinspection PyTypeChecker
+                f.write(value)
+            else:
+                raise RuntimeError('不支持传入此类型{}'.format(type(value)))
             logger.debug('保存文件成功[{}]', join(self.root_dir, name))
 
 
@@ -338,6 +395,10 @@ class Spider:
         @encoding.setter
         def encoding(self, encoding):
             self.response.encoding = encoding
+
+        @property
+        def url(self):
+            return self.response.url
 
         @property
         def html(self) -> HTML:
