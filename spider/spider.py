@@ -64,7 +64,7 @@ class FormatFilter(logging.Filter):
 def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
     # os.chdir(START_DIR)
     if not exists(log_dir):
-        os.mkdir(log_dir)
+        os.makedirs(log_dir)
     file_handler = logging.FileHandler(f"{log_dir}/"
                                        f"{localtime().tm_year}-"
                                        f"{localtime().tm_mon}-"
@@ -139,7 +139,7 @@ class ResourceRoot(ResourceBase):
         self.dirs = None
 
         if not exists(self.root_dir):
-            os.mkdir(self.root_dir)
+            os.makedirs(self.root_dir)
             logger.info('创建root_dir {}', self.root_dir)
 
         self.scan()
@@ -260,7 +260,7 @@ class Spider:
             self.__cache_dir = cache_dir
             self.__cache_json_name = 'cache.json'
             if not exists(cache_dir):
-                os.mkdir(cache_dir)
+                os.makedirs(cache_dir)
                 logger.debug('生成文件缓存路径{}', os.path.realpath(cache_dir))
             # 是否存在`cache.json`,没有则生成
             if not exists(join(cache_dir, self.__cache_json_name)):
