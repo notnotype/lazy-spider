@@ -75,7 +75,7 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
                                        encoding="utf-8")
     formatter = logging.Formatter('[{asctime}]'
                                   '[{levelname!s:5}]'
-                                  '[{name!s:^16}]'
+                                  '[{name!s:^6}]'
                                   '[{lineno!s:4}行]'
                                   '[{module}.{funcName}]\n'
                                   '{message!s}',
@@ -463,28 +463,36 @@ class Spider:
             # 如果禁用这个url的缓存, 则将之从缓存文件删除
             self.cache.clear_cache(url)
 
+        class HTTPBadCodeError(RuntimeError):
+            ...
+
         retry = 3
         while retry:
             try:
                 response = self.Response(handle(url, **kwargs))
-                if len(response.response.history) >= 2:
+                if len(response.response.history) > 1:
                     logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
                 if response.response.ok:
                     if cache_enable == Spider.ENABLE_CACHE:
                         self.cache.cache(url, response, alive_time)
                 else:
-                    logger.debug('状态码[{}], 取消缓存', response.status_code)
+                    raise HTTPBadCodeError(f'坏HTTP响应', response)
                 return response
             except requests.Timeout as e:
                 if retry == 1:
                     raise e
-                logger.debug('超时,重试---' + str(4 - retry))
+                logger.debug('超时,重试---{}'.format(str(4 - retry)))
             except requests.RequestException as e:
                 if retry == 1:
-                    logger.error('取消重试---' + str(4 - retry))
+                    logger.error('取消重试---{}'.format(str(4 - retry)))
                     raise e
-                logger.error('HTTP报错---' + str(4 - retry))
+                logger.error('HTTP报错---{}'.format(str(4 - retry)))
                 # todo 对于失败的`url`保存到另一个`log`文件
+            except HTTPBadCodeError as e:
+                if retry == 1:
+                    logger.info('取消重试({})'.format(args[1].status_code))
+                    return e.args[1]
+                logger.debug('坏HTTP响应({})---{}', e.args[1].status_code, 4 - retry)
             finally:
                 retry -= 1
 
