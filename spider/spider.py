@@ -10,13 +10,15 @@ from json import load, dump, loads
 from os.path import exists
 from os.path import join
 from time import localtime
+from time import sleep
 from types import MethodType
 from typing import Union, IO
 from urllib.parse import urljoin
 
 import requests
-from fake_useragent import UserAgent
 from lxml.etree import HTML
+
+from .utils import general_response_pipeline, get_random_header
 
 
 # 改变脚本的工作目录
@@ -25,6 +27,8 @@ from lxml.etree import HTML
 # os.chdir(FILE_DIR)
 
 # todo prepare to delete this function
+
+
 def limit_text(s: str, max_len):
     """文本太长自动打省略号"""
     s_len = len(s)
@@ -191,6 +195,14 @@ class ResourceRoot(ResourceBase):
         # return '<ResourceRoot root_dir=\'{}\'>'.format(self.root_dir)
         return '<ResourceRoot {!r}>'.format(self.list_dir)
 
+    def create_sub_root(self, name):
+        name = join(self.root_dir, name)
+        if not exists(name):
+            os.mkdir(name)
+        sub_root = ResourceRoot(name)
+        self.dirs[name] = sub_root
+        return sub_root
+
     def serialize_as_folder(self, path):
         """把自己的一个复制复制到一个位置"""
         shutil.copytree(self.rel_root_dir, os.path.realpath(path))
@@ -229,11 +241,7 @@ class ResourceRoot(ResourceBase):
             logger.debug('保存文件成功[{}]', join(self.root_dir, name))
 
 
-def get_random_header():
-    """返回一个随机的头"""
-    return {'User-Agent': str(UserAgent().random)}
-
-
+# 抽象来使用 `pipeline`
 class Spider:
     # todo 针对每次请求不同的`header`来重新加载缓存
     # todo 增加字段`data`,存`post`字段
@@ -409,10 +417,17 @@ class Spider:
         def search(self, pattern, flags=0):
             return re.search(pattern, self.text, flags=flags)
 
+        @property
+        def ok(self):
+            return self.response.ok
+
     def __init__(self):
         self.headers_generator = get_random_header
         self.cache = Spider.Cache()
         self.session = requests.session()
+        self.sep_time = 1
+        self.response_pipeline = general_response_pipeline
+        self.request_pipeline = None
         self.update_headers()
 
     def set_cookie(self, cookie: str):
@@ -424,6 +439,9 @@ class Spider:
             cookie,
             cookiejar=None,
             overwrite=True)
+
+    def set_sep_time(self, sep_time):
+        self.sep_time = sep_time
 
     def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
         """
@@ -442,6 +460,7 @@ class Spider:
         kwargs.setdefault('cache', True)
         kwargs.setdefault('timeout', (5, 20))
         alive_time = kwargs.pop('alive_time')
+        sep_time = kwargs.get('sep_time', self.sep_time)
         cache_enable = kwargs.pop('cache')
 
         url = ''
@@ -469,7 +488,9 @@ class Spider:
         retry = 3
         while retry:
             try:
+                # 间隔时间
                 response = self.Response(handle(url, **kwargs))
+                sleep(sep_time)
                 if len(response.response.history) > 1:
                     logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
                 if response.response.ok:
@@ -490,7 +511,7 @@ class Spider:
                 # todo 对于失败的`url`保存到另一个`log`文件
             except HTTPBadCodeError as e:
                 if retry == 1:
-                    logger.info('取消重试({})'.format(args[1].status_code))
+                    logger.info('坏HTTP响应, 取消重试({})'.format(e.args[1].status_code))
                     return e.args[1]
                 logger.debug('坏HTTP响应({})---{}', e.args[1].status_code, 4 - retry)
             finally:
