@@ -1,4 +1,4 @@
 from .item import Item
 from .spider import ResourceRoot
 from .spider import Spider
-from .spider import elem_tostring
+from .utils import elem_tostring

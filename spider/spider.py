@@ -17,7 +17,7 @@ import requests
 from lxml.etree import HTML
 
 from spider.cache import JsonCache
-from .utils import general_response_pipeline, get_random_header
+from .utils import general_response_pipeline, get_random_header, limit_text
 
 
 # 改变脚本的工作目录
@@ -26,22 +26,6 @@ from .utils import general_response_pipeline, get_random_header
 # os.chdir(FILE_DIR)
 
 # todo prepare to delete this function
-
-
-def limit_text(s: str, max_len):
-    """文本太长自动打省略号"""
-    s_len = len(s)
-    if s_len + 3 > max_len:
-        return s[:int(max_len / 2)] + '...' + s[-int(max_len / 2):]
-    else:
-        return s
-
-
-def elem_tostring(elem):
-    """HTML元素转换成字符串"""
-    elem_text_nodes = elem.xpath(".//text()")
-    beautiful_text = ''.join([elem.strip() for elem in elem_text_nodes])
-    return beautiful_text
 
 
 class FormatFilter(logging.Filter):

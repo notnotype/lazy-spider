@@ -9,14 +9,20 @@ from os.path import exists
 from os.path import join
 from typing import Union
 
+from peewee import *
+
 from .utils import limit_text
 
 logger = logging.getLogger('spider')
+db = SqliteDatabase('sqlite.db')
 
 
 class CacheBase:
     def __init__(self):
-        ...
+        self.cache_size = 10000
+        # "filename": str(uuid.uuid4()),
+        # "typing": str(obj.__class__),
+        # "alive_time": alive_time.strftime('%Y-%m-%d %H:%M:%S')
 
     def is_cached(self, name: str, ignore_date=False) -> bool:
         ...
@@ -109,7 +115,6 @@ class JsonCache(CacheBase):
         self.__cache_json['cached_files'][name] = {
             "filename": str(uuid.uuid4()),
             "typing": str(obj.__class__),
-            "repr": repr(obj),
             "alive_time": alive_time.strftime('%Y-%m-%d %H:%M:%S')
         }
         item = self.__cache_json['cached_files'][name]
@@ -143,3 +148,75 @@ class JsonCache(CacheBase):
 
     def clear_all(self):
         self.__cache_json = {"cached_files": {}}
+
+
+class SqliteCacheData(Model):
+    url = CharField()
+    typing = CharField()
+    alive_time = DateField()
+    data = TextField()
+
+    class Meta:
+        database = db
+
+
+class SqliteCache(CacheBase):
+
+    def __init__(self):
+        super().__init__()
+        if not db.is_connection_usable():
+            db.connect()
+        if not db.table_exists(SqliteCacheData):
+            db.create_tables([SqliteCacheData])
+
+    def is_cached(self, name: str, ignore_date=False) -> bool:
+        query = SqliteCacheData.select().where(SqliteCacheData.url == name)
+        if query:
+            item = query[0]
+            alive_time = item.alive_time
+            if alive_time > datetime.datetime.now() or ignore_date:
+                return True
+            else:
+                logger.debug('存活时间已过,重新缓存')
+                return False
+        else:
+            return False
+
+    def from_cache(self, name: str, force=False) -> object:
+        """
+
+        :param name:
+        :param force: 忽略时间过期, 强制从缓存读取
+        :return:
+        """
+        if self.is_cached(name, ignore_date=force):
+            item = SqliteCacheData.select().where(SqliteCacheData.url == name)
+            return pickle.loads(item.data)
+        else:
+            return None
+
+    def cache(self, name: str, obj, alive_time: Union[datetime.datetime, int]) -> bool:
+        if isinstance(alive_time, int):
+            alive_time = datetime.datetime.now() + datetime.timedelta(days=alive_time)
+        query = SqliteCacheData.select().where(SqliteCacheData.url == name)
+        # 查询
+        if not query:
+            item = SqliteCacheData()
+        else:
+            item = query[0]
+        # 填充数据
+        item.url = name
+        item.typing = str(obj.__class__)
+        item.alive_time = alive_time.strftime('%Y-%m-%d %H:%M:%S')
+        item.data = pickle.dumps(obj)
+        logger.debug('缓存: {} -> {}'.format(limit_text(name, 200), str(db)))
+        return True
+
+    def save(self):
+        super().save()
+
+    def clear_all(self):
+        super().clear_all()
+
+
+...
