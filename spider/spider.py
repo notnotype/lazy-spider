@@ -266,6 +266,9 @@ class Spider:
         def __init__(self, cache_dir='__pycache__'):
             self.__cache_dir = cache_dir
             self.__cache_json_name = 'cache.json'
+            # todo 缓存最大容量, 超出自动删除最旧的缓存
+            # todo 改用 `sqlite` 存 `json`
+            self.cache_size = 10000
             if not exists(cache_dir):
                 os.makedirs(cache_dir)
                 logger.debug('生成文件缓存路径{}', os.path.realpath(cache_dir))
@@ -352,6 +355,9 @@ class Spider:
 
         def clear_cache(self, name: str):
             if name in self.__cache_json['cached_files']:
+                item = self.__cache_json['cached_files'][name]
+                filename = item['filename']
+                os.remove(join(self.__cache_dir, filename))
                 del self.__cache_json['cached_files'][name]
 
         def clear_all(self):
