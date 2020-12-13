@@ -10,8 +10,8 @@ class TestSqliteCache:
     def setup_class(self):
         self.cache = SqliteCache()
 
-        for i in range(100):
-            self.cache.cache(str(i), {}, 1)
+        # for i in range(100):
+        #     self.cache.cache(str(i), {}, 1)
 
     def test_cache(self):
         assert self.cache.cache('www.baidu.com', {'date': '01001100101'}, alive_time=2)
@@ -39,6 +39,11 @@ class TestSqliteCache:
         will_del = self.cache.from_cache('will del')
         assert will_del == {}
         assert self.cache.clear_cache('will del') == 1
+        will_del = self.cache.from_cache('will del')
+        assert will_del is None
+
+    def test_cache_alive_time(self):
+        self.cache.cache('will del', {}, alive_time=-1)
         will_del = self.cache.from_cache('will del')
         assert will_del is None
 

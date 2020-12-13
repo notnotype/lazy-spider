@@ -185,6 +185,7 @@ class SqliteCache(CacheBase):
                 return True
             else:
                 logger.debug('存活时间已过,重新缓存')
+                self.clear_cache(name)
                 return False
         else:
             return False
