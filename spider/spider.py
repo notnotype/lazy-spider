@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 import requests
 from lxml.etree import HTML
 
-from spider.cache import JsonCache
+from spider.cache import SqliteCache
 from .utils import general_response_pipeline, get_random_header, limit_text
 
 
@@ -303,8 +303,8 @@ class Spider:
 
     def __init__(self):
         self.headers_generator = get_random_header
-        self.cache = JsonCache()
-        # self.cache = SqliteCache()
+        # self.cache = JsonCache()
+        self.cache = SqliteCache()
         self.session = requests.session()
         self.sep_time = 1
         self.response_pipeline = general_response_pipeline
