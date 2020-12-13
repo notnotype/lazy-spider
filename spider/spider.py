@@ -4,6 +4,8 @@ import logging
 import os
 import re
 import shutil
+import time
+import uuid
 from json import loads
 from os.path import exists
 from os.path import join
@@ -166,6 +168,11 @@ class ResourceRoot(ResourceBase):
 
     def __setitem__(self, filename: str, value: Union[str, IO, dict, ResourceBase, bytes]):
         """默认调用`self.save`"""
+        filename = filename.format(
+            now=datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S'),
+            uuid=uuid.uuid4().__str__().replace('-', ''),
+            time=time.time().__str__().replace('.', '')
+        )
         self.save(filename, value)
 
         # todo 低效率
