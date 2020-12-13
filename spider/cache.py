@@ -14,7 +14,7 @@ from peewee import *
 from .utils import limit_text
 
 logger = logging.getLogger('spider')
-db = SqliteDatabase('sqlite.db')
+db = SqliteDatabase('db.sqlite')
 
 
 class CacheBase:
@@ -153,8 +153,8 @@ class JsonCache(CacheBase):
 class SqliteCacheData(Model):
     url = CharField()
     typing = CharField()
-    alive_time = DateField()
-    data = TextField()
+    alive_time = DateTimeField()
+    data = BitField()
 
     class Meta:
         database = db
@@ -173,7 +173,7 @@ class SqliteCache(CacheBase):
         query = SqliteCacheData.select().where(SqliteCacheData.url == name)
         if query:
             item = query[0]
-            alive_time = item.alive_time
+            alive_time: datetime.date = item.alive_time
             if alive_time > datetime.datetime.now() or ignore_date:
                 return True
             else:
@@ -190,7 +190,7 @@ class SqliteCache(CacheBase):
         :return:
         """
         if self.is_cached(name, ignore_date=force):
-            item = SqliteCacheData.select().where(SqliteCacheData.url == name)
+            item = SqliteCacheData.select().where(SqliteCacheData.url == name)[0]
             return pickle.loads(item.data)
         else:
             return None
@@ -210,13 +210,10 @@ class SqliteCache(CacheBase):
         item.alive_time = alive_time.strftime('%Y-%m-%d %H:%M:%S')
         item.data = pickle.dumps(obj)
         logger.debug('缓存: {} -> {}'.format(limit_text(name, 200), str(db)))
-        return True
+        return item.save()
 
     def save(self):
         super().save()
 
     def clear_all(self):
         super().clear_all()
-
-
-...
