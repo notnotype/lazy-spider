@@ -173,6 +173,8 @@ class SqliteCache(CacheBase):
             db.connect()
         if not db.table_exists(SqliteCacheData):
             db.create_tables([SqliteCacheData])
+        self.cache_size = 10000
+        self.remain_percent = 0.75
 
     def is_cached(self, name: str, ignore_date=False) -> bool:
         query = SqliteCacheData.select().where(SqliteCacheData.url == name)
@@ -219,6 +221,21 @@ class SqliteCache(CacheBase):
 
     def save(self):
         super().save()
+
+    def clear_more_caches(self):
+        if SqliteCacheData.select().count() > self.cache_size:
+            logger.debug('删除缓存中......')
+            will_del = SqliteCacheData.select() \
+                .limit(int(self.remain_percent * self.cache_size)) \
+                .order_by(SqliteCacheData.alive_time)
+            print('will_del len', will_del.count())
+            for each in will_del:
+                each.delete_instance()
+            logger.info('缓存过多, 最大缓存大小[{}], 删除缓存[{}]个, 剩下缓存[{}]个'.format(
+                self.cache_size,
+                len(will_del),
+                SqliteCacheData.select().count()
+            ))
 
     def clear_cache(self, name: str):
         logger.debug('删除缓存[{}]'.format(name))

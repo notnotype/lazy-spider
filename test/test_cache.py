@@ -10,6 +10,9 @@ class TestSqliteCache:
     def setup_class(self):
         self.cache = SqliteCache()
 
+        for i in range(100):
+            self.cache.cache(str(i), {}, 1)
+
     def test_cache(self):
         assert self.cache.cache('www.baidu.com', {'date': '01001100101'}, alive_time=2)
         assert self.cache.is_cached('www.baidu.com') is True
@@ -23,6 +26,10 @@ class TestSqliteCache:
         assert item == {'date': '01001100101'}
         item = self.cache.from_cache('something')
         assert item is None
+
+    def test_clear_more_caches(self):
+        self.cache.cache_size = 50
+        self.cache.clear_more_caches()
 
     def test_save(self):
         assert False
