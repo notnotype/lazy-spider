@@ -1,5 +1,10 @@
+import logging
+
 from fake_useragent import UserAgent
+from peewee import SqliteDatabase
 from requests import Request
+
+logger = logging.getLogger('spider')
 
 
 def general_request_pipeline(spider, response) -> Request:
@@ -29,3 +34,14 @@ def elem_tostring(elem):
     elem_text_nodes = elem.xpath(".//text()")
     beautiful_text = ''.join([elem.strip() for elem in elem_text_nodes])
     return beautiful_text
+
+
+def good_dirname(string: str) -> str:
+    string.replace('\n', '').replace('\t', '').replace(' ', '')
+    return string
+
+
+def get_sqlite_db(db_name='db.sqlite'):
+    db = SqliteDatabase(db_name)
+    logger.info('创建数据库[{}]'.format(db_name))
+    return db

@@ -11,10 +11,10 @@ from typing import Union
 
 from peewee import *
 
-from .utils import limit_text
+from .utils import limit_text, get_sqlite_db
 
 logger = logging.getLogger('spider')
-db = SqliteDatabase('db.sqlite')
+db = get_sqlite_db()
 
 
 class CacheBase:
