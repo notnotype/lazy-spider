@@ -36,6 +36,9 @@ class CacheBase:
     def save(self):
         ...
 
+    def clear_cache(self, name: str):
+        ...
+
     def clear_all(self):
         ...
 
@@ -145,8 +148,10 @@ class JsonCache(CacheBase):
             filename = item['filename']
             os.remove(join(self.__cache_dir, filename))
             del self.__cache_json['cached_files'][name]
+            logger.debug('删除缓存[{}]'.format(name))
 
     def clear_all(self):
+        logger.debug('删除缓存[{}]个'.format(len(self.__cache_json)))
         self.__cache_json = {"cached_files": {}}
 
 
@@ -215,5 +220,12 @@ class SqliteCache(CacheBase):
     def save(self):
         super().save()
 
+    def clear_cache(self, name: str):
+        logger.debug('删除缓存[{}]'.format(name))
+        return SqliteCacheData.delete().where(SqliteCacheData.url == name).execute()
+
     def clear_all(self):
-        super().clear_all()
+        sql = SqliteCacheData.delete()
+        result = sql.execute()
+        logger.debug('删除缓存[{}]个'.format(result))
+        return

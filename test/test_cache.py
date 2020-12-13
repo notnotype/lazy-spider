@@ -27,5 +27,13 @@ class TestSqliteCache:
     def test_save(self):
         assert False
 
+    def test_clear_cache(self):
+        self.cache.cache('will del', {}, alive_time=1)
+        will_del = self.cache.from_cache('will del')
+        assert will_del == {}
+        assert self.cache.clear_cache('will del') == 1
+        will_del = self.cache.from_cache('will del')
+        assert will_del is None
+
     def test_clear_all(self):
         assert False
