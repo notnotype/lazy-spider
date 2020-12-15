@@ -1,5 +1,4 @@
 requests
 lxml
-fake_userage
-
+fake_useragent
 peewee
