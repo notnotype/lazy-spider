@@ -1,6 +1,7 @@
 # light-spider
- 一个轻量级通用的爬虫工具
- 对`requests`,`lxml`等库的二次封装
+ 一个配置完备的爬虫工具
+ 对 lxml, requests, peewee......的二次封装
+ A lazy spider tools which intergrate lxml, requests, peewee......
 
 # 快速开始
 > 先`clone`仓库到本地, 然后安装依赖
@@ -120,10 +121,15 @@ resp = spider.get('www.baidu.com/s?wd={}'.format(quote('美女')), cache=False)
 更新了ResourceRoot类
 这个类可也方便json等文件的读取与写入
 ```
-- `2020/12/3`
+- `2020/12/6`
 ```
 更改了项目结构
 考虑使用 `Item` 类来收集资源
 像 `scrapy` 一样
 同时 也更新了 `READEME.md`, 增加了快速入门文档 `quick_start.md`
 ```
+- `2020/12/19`
+```
+使用`poetry`来管理依赖
+```
+
