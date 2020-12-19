@@ -31,8 +31,6 @@ class TestSqliteCache:
         self.cache.cache_size = 50
         self.cache.clear_more_caches()
 
-    def test_save(self):
-        assert False
 
     def test_clear_cache(self):
         self.cache.cache('will del', {}, alive_time=1)
@@ -47,5 +45,3 @@ class TestSqliteCache:
         will_del = self.cache.from_cache('will del')
         assert will_del is None
 
-    def test_clear_all(self):
-        assert False

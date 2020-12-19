@@ -163,6 +163,7 @@ class SqliteCacheData(Model):
 
     class Meta:
         database = db
+        table_name = 'lazy_spider_cache'
 
 
 class SqliteCache(CacheBase):
@@ -204,6 +205,8 @@ class SqliteCache(CacheBase):
             return None
 
     def cache(self, name: str, obj, alive_time: Union[datetime.datetime, int]) -> bool:
+        # 清除过多的缓存
+        self.clear_more_caches()
         if isinstance(alive_time, int):
             alive_time = datetime.datetime.now() + datetime.timedelta(days=alive_time)
         query = SqliteCacheData.select().where(SqliteCacheData.url == name)
