@@ -12,11 +12,12 @@ from os.path import join
 from time import localtime
 from time import sleep
 from types import MethodType
-from typing import Union, IO
+from typing import Union, IO, List
 from urllib.parse import urljoin
 
 import requests
 from lxml.etree import HTML
+from lxml.html import HtmlElement
 
 from spider.cache import SqliteCache
 from .utils import general_response_pipeline, get_random_header, limit_text
@@ -273,17 +274,16 @@ class Spider:
             return self.response.url
 
         @property
-        def html(self) -> HTML:
+        def html(self) -> HtmlElement:
             if self.__html is None:
                 self.__html = HTML(self.text)
             return self.__html
 
-        @html.setter
-        def html(self, value):
-            self.__html = value
-
-        def xpath(self, exp):
+        def xpath(self, exp) -> List[HtmlElement]:
             return self.html.xpath(exp)
+
+        def css(self, css) -> List[HtmlElement]:
+            return self.html.cssselect(css)
 
         @property
         def json(self, *args, slices=None, **kwargs) -> dict:
