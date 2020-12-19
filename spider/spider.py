@@ -445,30 +445,4 @@ class Spider:
         self.session.close()
 
 
-def test_resource():
-    res = ResourceRoot('resource')
-    # logger.debug('list_dir: {}', res.list_dir)
-    # logger.debug('files: {}', str(res.files))
-    # logger.debug('dirs: {}', str(res.dirs))
-    # logger.debug('root_dir: {}', str(res.root_dir))
-    hello = res['hello']
 
-    # res2 = ResourceRoot('res2')
-    # res2['hello2'] = res
-    logger.debug(hello)
-
-    # f.seek(0)
-    # print(f.read())
-
-
-def test_spider():
-    spider = Spider()
-    resp = spider.get('http://www.baidu.com/', '1.png', timeout=1)
-    resp.encoding = 'gb2313'
-    # print(resp.text)
-    print('=====================')
-    spider.cache.save()
-
-
-if __name__ == '__main__':
-    test_resource()
