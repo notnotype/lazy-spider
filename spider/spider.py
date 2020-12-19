@@ -444,5 +444,9 @@ class Spider:
     def close(self):
         self.session.close()
 
+def quick_start():
+    ...
 
 
+def get_spider():
+    ...

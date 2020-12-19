@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "A lazy spider tools which intergrate lxml, requests, peewee......"
 authors = ["notnotype <2056369669@qq.com>"]
 license = "MIT"
+packages = [
+    { include = "spider", from = "." },
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
