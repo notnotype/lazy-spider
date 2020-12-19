@@ -4,11 +4,9 @@
  A lazy spider tools which intergrate lxml, requests, peewee......
 
 # 快速开始
-> 先`clone`仓库到本地, 然后安装依赖
+> 使用 `pip` 安装
 ```bash
-git clone https://github.com/notnotype/light-spider.git
-cd light-spider
-pip install requirements.txt
+pip install lazy_spider
 ```
 > 然后编写`Python`代码
 
@@ -128,6 +126,11 @@ resp = spider.get('www.baidu.com/s?wd={}'.format(quote('美女')), cache=False)
 像 `scrapy` 一样
 同时 也更新了 `READEME.md`, 增加了快速入门文档 `quick_start.md`
 ```
+- `2020/12/13`
+```
+集成 `peewee`
+```
+
 - `2020/12/19`
 ```
 使用`poetry`来管理依赖
