@@ -1,4 +1,6 @@
 import logging
+import random
+from time import sleep
 
 from fake_useragent import UserAgent
 from peewee import SqliteDatabase
@@ -45,3 +47,10 @@ def get_sqlite_db(db_name='db.sqlite'):
     db = SqliteDatabase(db_name)
     logger.info('创建数据库[{}]'.format(db_name))
     return db
+
+
+def random_sleeper(a, b):
+    def sleeper():
+        sleep(random.randint(a, b))
+
+    return sleeper

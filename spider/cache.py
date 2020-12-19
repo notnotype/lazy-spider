@@ -56,8 +56,6 @@ class JsonCache(CacheBase):
         super().__init__()
         self.__cache_dir = cache_dir
         self.__cache_json_name = 'cache.json'
-        # todo 缓存最大容量, 超出自动删除最旧的缓存
-        # todo 改用 `sqlite` 存 `json`
         self.cache_size = 10000
         if not exists(cache_dir):
             os.makedirs(cache_dir)

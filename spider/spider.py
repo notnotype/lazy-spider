@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shutil
+import threading
 import time
 import uuid
 from json import loads
@@ -12,7 +13,7 @@ from os.path import join
 from time import localtime
 from time import sleep
 from types import MethodType
-from typing import Union, IO, List
+from typing import Union, IO, List, Callable
 from urllib.parse import urljoin
 
 import requests
@@ -20,15 +21,13 @@ from lxml.etree import HTML
 from lxml.html import HtmlElement
 
 from spider.cache import SqliteCache
-from .utils import general_response_pipeline, get_random_header, limit_text
+from .utils import general_response_pipeline, get_random_header, limit_text, random_sleeper
 
 
 # 改变脚本的工作目录
 # START_DIR = os.getcwd()
 # FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 # os.chdir(FILE_DIR)
-
-# todo prepare to delete this function
 
 
 class FormatFilter(logging.Filter):
@@ -256,6 +255,11 @@ class Spider:
             self.status_code = response.status_code
             self.__html = None
             self.__json = None
+            self.__title = None
+
+        @property
+        def history(self):
+            return self.response.history
 
         @property
         def content(self):
@@ -312,15 +316,39 @@ class Spider:
         def ok(self):
             return self.response.ok
 
+        @property
+        def title(self):
+            if not self.__title:
+                self.__title = self.xpath('//title/text()')[0]
+            return self.__title
+
+        def __repr__(self):
+            return 'Spider.Response[{}] [{}]'.format(
+                self.response.status_code,
+                self.title
+            )
+
     def __init__(self):
         self.headers_generator = get_random_header
         # self.cache = JsonCache()
         self.cache = SqliteCache()
         self.session = requests.session()
-        self.sep_time = 1
+        self.sleeper = random_sleeper(5, 10)
         self.response_pipeline = general_response_pipeline
         self.request_pipeline = None
+        self.__encoding = None
         self.update_headers()
+
+    def set_sleeper(self, sleeper: Callable):
+        self.sleeper = sleeper
+
+    @property
+    def encoding(self):
+        return self.__encoding
+
+    @encoding.setter
+    def encoding(self, encoding):
+        self.__encoding = encoding
 
     def set_cookie(self, cookie: str):
         """设置cookie
@@ -331,9 +359,6 @@ class Spider:
             cookie,
             cookiejar=None,
             overwrite=True)
-
-    def set_sep_time(self, sep_time):
-        self.sep_time = sep_time
 
     def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
         """
@@ -352,7 +377,7 @@ class Spider:
         kwargs.setdefault('cache', True)
         kwargs.setdefault('timeout', (5, 20))
         alive_time = kwargs.pop('alive_time')
-        sep_time = kwargs.get('sep_time', self.sep_time)
+        sep_time = kwargs.get('sep_time', self.sleeper)
         cache_enable = kwargs.pop('cache')
 
         url = ''
@@ -382,7 +407,10 @@ class Spider:
             try:
                 # 间隔时间
                 response = self.Response(handle(url, **kwargs))
-                sleep(sep_time)
+                if isinstance(sep_time, Callable):
+                    sep_time()
+                else:
+                    sleep(sep_time)
                 if len(response.response.history) > 1:
                     logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
                 if response.response.ok:
@@ -445,9 +473,27 @@ class Spider:
         self.session.close()
 
 
-def quick_start():
-    ...
+local = threading.local()
 
 
 def get_spider():
-    ...
+    if not local.spider:
+        local.spider = Spider()
+    return local.spider
+
+
+def gs():
+    """qs() == get_spider()"""
+    return get_spider()
+
+
+def get(*args, **kwargs):
+    gs().get(*args, **kwargs)
+
+
+def post(*args, **kwargs):
+    gs().post(*args, **kwargs)
+
+
+def close():
+    gs().close()
