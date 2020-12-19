@@ -100,6 +100,7 @@ class ResourceBase:
 
 # 考虑使用`property`
 class ResourceRoot(ResourceBase):
+    # todo 没有 close
     def scan(self):
         """扫描当前文件夹, 更新`list_dir`, `files`, `dirs`"""
         self.list_dir = list(map(lambda name: join(self.root_dir, name), os.listdir(self.root_dir)))
@@ -230,6 +231,9 @@ class ResourceRoot(ResourceBase):
             else:
                 raise RuntimeError('不支持传入此类型{}'.format(type(value)))
             logger.debug('保存文件成功[{}]', join(self.root_dir, name))
+
+    def close(self):
+        ...
 
 
 # 抽象来使用 `pipeline`

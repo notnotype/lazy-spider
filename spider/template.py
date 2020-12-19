@@ -2,19 +2,17 @@
 生成模板
 """
 
-import os
-import sys
+from .spider import ResourceRoot
 
-sys.path.append(os.pardir)
 
-import logging
+def render_template(template: str, data: dict):
+    return template.format(**data)
 
-from spider import Spider
-from spider import ResourceRoot
 
-spider = Spider()
-logger = logging.getLogger('spider')
-res = ResourceRoot('resources')
+def init(dirname: str, name: str, template_style: int):
+    """初始化项目"""
+    template_root = ResourceRoot('templates')
+    dir_root = ResourceRoot(dirname)
 
-if __name__ == '__main__':
-    ...
+    template_root.close()
+    dir_root.close()
