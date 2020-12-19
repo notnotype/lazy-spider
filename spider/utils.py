@@ -1,6 +1,7 @@
 import logging
 import random
 from time import sleep
+from typing import Iterable
 
 from fake_useragent import UserAgent
 from peewee import SqliteDatabase
@@ -54,3 +55,8 @@ def random_sleeper(a, b):
         sleep(random.randint(a, b))
 
     return sleeper
+
+
+class ProxyGeneratorBase:
+    def __call__(self, *args, **kwargs) -> Iterable:
+        ...

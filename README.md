@@ -136,3 +136,13 @@ resp = spider.get('www.baidu.com/s?wd={}'.format(quote('美女')), cache=False)
 使用`poetry`来管理依赖
 ```
 
+- `2020/12/19`
+```
+添加许多小功能
+sleeper 随机间隔时间
+response.title
+response.__str__
+等等......
+```
+
+

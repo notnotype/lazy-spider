@@ -323,7 +323,7 @@ class Spider:
             return self.__title
 
         def __repr__(self):
-            return 'Spider.Response[{}] [{}]'.format(
+            return '<Spider.Response[{}] [{}]>'.format(
                 self.response.status_code,
                 self.title
             )
@@ -336,11 +336,22 @@ class Spider:
         self.sleeper = random_sleeper(5, 10)
         self.response_pipeline = general_response_pipeline
         self.request_pipeline = None
+        # todo proxy_generator
+        self.proxy_generator = None
         self.__encoding = None
         self.update_headers()
 
     def set_sleeper(self, sleeper: Callable):
         self.sleeper = sleeper
+
+    def set_header_generator(self, header_generator):
+        self.headers_generator = header_generator
+
+    def set_response_pipeline(self, response_pipeline):
+        self.response_pipeline = response_pipeline
+
+    def set_request_pipeline(self, request_pipeline):
+        self.request_pipeline = request_pipeline
 
     @property
     def encoding(self):
@@ -411,7 +422,7 @@ class Spider:
                     sep_time()
                 else:
                     sleep(sep_time)
-                if len(response.response.history) > 1:
+                if len(response.response.history) >= 1:
                     logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
                 if response.response.ok:
                     if cache_enable == Spider.ENABLE_CACHE:
@@ -449,7 +460,10 @@ class Spider:
         :return: Union[Response, requests.Response, object]
         """
         # 获取`alive_time`, `url`参数
-        return self.__get_or_post(self.session.get, *args, **kwargs)
+        resp = self.__get_or_post(self.session.get, *args, **kwargs)
+        if self.response_pipeline:
+            resp = self.response_pipeline(self, resp)
+        return resp
 
     def post(self, *args, **kwargs) -> Response:
         """获取网页
@@ -462,7 +476,10 @@ class Spider:
 
         :return: Union[Response, requests.Response, object]
         """
-        return self.__get_or_post(self.session.post, *args, **kwargs)
+        resp = self.__get_or_post(self.session.post, *args, **kwargs)
+        if self.response_pipeline:
+            resp = self.response_pipeline(self, resp)
+        return resp
 
     def update_headers(self):
         """调用`self.headers_generator`来更新头"""
