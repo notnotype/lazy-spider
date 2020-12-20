@@ -218,7 +218,8 @@ class SqliteCache(CacheBase):
         item.typing = str(obj.__class__)
         item.alive_time = alive_time.strftime('%Y-%m-%d %H:%M:%S')
         item.data = pickle.dumps(obj)
-        logger.debug('缓存: {} -> {}'.format(limit_text(name, 200), str(db)))
+        logger.debug('缓存: {} -> {}'.format(limit_text(name, 200),
+                                           str(SqliteCacheData)))
         return item.save()
 
     def save(self):

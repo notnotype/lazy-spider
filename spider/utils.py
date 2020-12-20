@@ -23,11 +23,12 @@ def get_random_header():
     return {'User-Agent': str(UserAgent().random)}
 
 
-def limit_text(s: str, max_len):
+def limit_text(s: str, max_len, replace='...'):
     """文本太长自动打省略号"""
     s_len = len(s)
-    if s_len + 3 > max_len:
-        return s[:int(max_len / 2)] + '...' + s[-int(max_len / 2):]
+    replace_len = len(replace)
+    if s_len + replace_len > max_len:
+        return s[:int(max_len / 2)] + replace + s[-int(max_len / 2):]
     else:
         return s
 
@@ -40,7 +41,9 @@ def elem_tostring(elem):
 
 
 def good_dirname(string: str) -> str:
+    """一个好目录名字"""
     string.replace('\n', '').replace('\t', '').replace(' ', '')
+    string = limit_text(string, 60, '___')
     return string
 
 

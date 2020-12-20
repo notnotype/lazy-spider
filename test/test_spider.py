@@ -45,6 +45,10 @@ class TestSpider:
 
 
 def test_gs():
-    spider.cache.clear_all()
-    r = spider.get('www.baidu.com/', 's')
+    # spider.cache.clear_all()
+    r = spider.get('www.baidu.com/', 's',
+                   params={'wd': 'python我爱你'},
+                   cache=Spider.DISABLE_CACHE)
+    print('r.type', type(r))
     print(r)
+    # print(r.text)

@@ -14,7 +14,7 @@ from time import localtime
 from time import sleep
 from types import MethodType
 from typing import Union, IO, List, Callable
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 
 import requests
 from lxml.etree import HTML
@@ -323,10 +323,13 @@ class Spider:
             return self.__title
 
         def __repr__(self):
-            return '<Spider.Response[{}] [{}]>'.format(
+            return '<Response[{}] [{}]>'.format(
                 self.response.status_code,
                 self.title
             )
+
+        def __str__(self):
+            return self.__repr__()
 
     def __init__(self):
         self.headers_generator = get_random_header
@@ -371,11 +374,11 @@ class Spider:
             cookiejar=None,
             overwrite=True)
 
-    def __get_or_post(self, handle, *args, **kwargs) -> Union[Response, requests.Response, object]:
+    def lunch(self, handle: [requests.get, requests.post], *args, **kwargs) -> \
+            Union[Response, requests.Response, object]:
         """
 
         :param handle 处理请求的一个函数
-        :param args `url`的各个路径:
         :param kwargs: 包含`requests`库所有选项
         :keyword alive_time: Union[datetime, int]缓存存活日期
         :keyword cache: 是否使用缓存
@@ -387,9 +390,11 @@ class Spider:
         kwargs.setdefault('alive_time', datetime.datetime.now() + datetime.timedelta(days=3))
         kwargs.setdefault('cache', True)
         kwargs.setdefault('timeout', (5, 20))
+        kwargs.setdefault('retry', 3)
         alive_time = kwargs.pop('alive_time')
         sep_time = kwargs.get('sep_time', self.sleeper)
         cache_enable = kwargs.pop('cache')
+        retry = kwargs.pop('retry')
 
         url = ''
         for each in args:
@@ -404,7 +409,6 @@ class Spider:
         if self.cache.is_cached(url, ignore_date=is_force_cache) and cache_enable:
             logger.debug('从缓存: {} <- {}', limit_text(url, 200), '文件')
             return self.cache.from_cache(url, force=is_force_cache)
-        logger.info('下载: {}', limit_text(url, 200))
 
         if cache_enable == Spider.DISABLE_CACHE:
             # 如果禁用这个url的缓存, 则将之从缓存文件删除
@@ -413,7 +417,16 @@ class Spider:
         class HTTPBadCodeError(RuntimeError):
             ...
 
-        retry = 3
+        # 发送请求
+        # 显示logger文案
+        if 'params' in kwargs:
+            params = kwargs.get('params')
+            tmp = ['{}={}'.format(k, quote(v)) for k, v in params.items()]
+            logger.info('请求: {}', limit_text(url + '?' + '&'.join(tmp), 200))
+        else:
+            logger.info('请求: {}', limit_text(url, 200))
+
+        retry = retry
         while retry:
             try:
                 # 间隔时间
@@ -429,7 +442,7 @@ class Spider:
                                  '->'.join(['[{}]'.format(i) for i in history]))
                 if response.response.ok:
                     if cache_enable == Spider.ENABLE_CACHE:
-                        self.cache.cache(url, response, alive_time)
+                        self.cache.cache(response.url, response, alive_time)
                 else:
                     raise HTTPBadCodeError(f'坏HTTP响应', response)
                 return response
@@ -463,7 +476,7 @@ class Spider:
         :return: Union[Response, requests.Response, object]
         """
         # 获取`alive_time`, `url`参数
-        resp = self.__get_or_post(self.session.get, *args, **kwargs)
+        resp = self.lunch(self.session.get, *args, **kwargs)
         if self.response_pipeline:
             resp = self.response_pipeline(self, resp)
         return resp
@@ -479,7 +492,7 @@ class Spider:
 
         :return: Union[Response, requests.Response, object]
         """
-        resp = self.__get_or_post(self.session.post, *args, **kwargs)
+        resp = self.lunch(self.session.post, *args, **kwargs)
         if self.response_pipeline:
             resp = self.response_pipeline(self, resp)
         return resp
