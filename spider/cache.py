@@ -241,8 +241,10 @@ class SqliteCache(CacheBase):
             ))
 
     def clear_cache(self, name: str):
-        logger.debug('删除缓存[{}]'.format(name))
-        return SqliteCacheData.delete().where(SqliteCacheData.url == name).execute()
+        result = SqliteCacheData.delete().where(SqliteCacheData.url == name).execute()
+        if result:
+            logger.debug('删除缓存[{}]'.format(name))
+        return result
 
     def clear_all(self):
         sql = SqliteCacheData.delete()
