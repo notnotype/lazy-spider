@@ -337,6 +337,7 @@ class Spider:
         self.cache = SqliteCache()
         self.session = requests.session()
         self.sleeper = random_sleeper(5, 10)
+        # todo change to pipelines
         self.response_pipeline = general_response_pipeline
         self.request_pipeline = None
         # todo proxy_generator
@@ -355,6 +356,9 @@ class Spider:
 
     def set_request_pipeline(self, request_pipeline):
         self.request_pipeline = request_pipeline
+
+    def set_proxy_generator(self, proxy_generator):
+        self.proxy_generator = proxy_generator
 
     @property
     def encoding(self):
@@ -407,7 +411,7 @@ class Spider:
 
         # 如果 `is_force_cache` is True 则, 不论缓存是否过期, 都从缓存加载
         if self.cache.is_cached(url, ignore_date=is_force_cache) and cache_enable:
-            logger.debug('从缓存: {} <- {}', limit_text(url, 200), '文件')
+            logger.debug('从缓存: {} <- {}', limit_text(url, 200), self.cache.table_name)
             return self.cache.from_cache(url, force=is_force_cache)
 
         if cache_enable == Spider.DISABLE_CACHE:

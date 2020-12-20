@@ -172,6 +172,7 @@ class SqliteCache(CacheBase):
             db.connect()
         if not db.table_exists(SqliteCacheData):
             db.create_tables([SqliteCacheData])
+        self.table_name = str(SqliteCacheData)
         self.cache_size = 10000
         self.remain_percent = 0.75
 
