@@ -423,7 +423,10 @@ class Spider:
                 else:
                     sleep(sep_time)
                 if len(response.response.history) >= 1:
-                    logger.debug('===重定向历史===\n{}', '\n'.join([each.url for each in response.response.history]))
+                    history = [each.url for each in response.response.history]
+                    history.append(response.url)
+                    logger.debug('===发生页面重定向===\n{}',
+                                 '->'.join(['[{}]'.format(i) for i in history]))
                 if response.response.ok:
                     if cache_enable == Spider.ENABLE_CACHE:
                         self.cache.cache(url, response, alive_time)
@@ -494,7 +497,7 @@ local = threading.local()
 
 
 def get_spider():
-    if not local.spider:
+    if 'spider' not in local:
         local.spider = Spider()
     return local.spider
 

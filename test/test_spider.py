@@ -42,3 +42,9 @@ class TestSpider:
         # print(resp.text)
         print('=====================')
         spider.cache.save()
+
+
+def test_gs():
+    spider.cache.clear_all()
+    r = spider.get('www.baidu.com/', 's')
+    print(r)
