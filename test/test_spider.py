@@ -23,10 +23,11 @@ class TestResponse:
 
 class TestSpider:
     def test_resource(self):
-        # logger.debug('list_dir: {}', res.list_dir)
-        # logger.debug('files: {}', str(res.files))
-        # logger.debug('dirs: {}', str(res.dirs))
-        # logger.debug('root_dir: {}', str(res.root_dir))
+        logger.debug('list_dir: {}', res.list_dir)
+        logger.debug('files: {}', str(res.files))
+        logger.debug('dirs: {}', str(res.dirs))
+        logger.debug('root_dir: {}', str(res.root_dir))
+        res['hello'] = 'Hello, World.'
         hello = res['hello']
 
         # res2 = ResourceRoot('res2')

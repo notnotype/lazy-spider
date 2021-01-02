@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import shutil
-import threading
 import time
 import uuid
 from json import loads
@@ -319,7 +318,11 @@ class Spider:
         @property
         def title(self):
             if not self.__title:
-                self.__title = self.xpath('//title/text()')[0]
+                result = self.__title = self.xpath('//title/text()')
+                if result:
+                    self.__title = result[0]
+                else:
+                    self.__title = "Error"
             return self.__title
 
         def __repr__(self):
@@ -346,18 +349,28 @@ class Spider:
         self.update_headers()
 
     def set_sleeper(self, sleeper: Callable):
+        if not isinstance(sleeper, Callable):
+            raise RuntimeError('参数必须是Callable')
         self.sleeper = sleeper
 
     def set_header_generator(self, header_generator):
+        # if not isinstance(header_generator, Callable):
+        #     raise RuntimeError('参数必须是Callable')
         self.headers_generator = header_generator
 
     def set_response_pipeline(self, response_pipeline):
+        # if not isinstance(response_pipeline, Callable):
+        #     raise RuntimeError('参数必须是Callable')
         self.response_pipeline = response_pipeline
 
     def set_request_pipeline(self, request_pipeline):
+        # if not isinstance(request_pipeline, Callable):
+        #     raise RuntimeError('参数必须是Callable')
         self.request_pipeline = request_pipeline
 
     def set_proxy_generator(self, proxy_generator):
+        # if not isinstance(proxy_generator, Callable):
+        #     raise RuntimeError('参数必须是Callable')
         self.proxy_generator = proxy_generator
 
     @property
@@ -442,7 +455,7 @@ class Spider:
                 if len(response.response.history) >= 1:
                     history = [each.url for each in response.response.history]
                     history.append(response.url)
-                    logger.debug('===发生页面重定向===\n{}',
+                    logger.debug('页面重定向: {}',
                                  '->'.join(['[{}]'.format(i) for i in history]))
                 if response.response.ok:
                     if cache_enable == Spider.ENABLE_CACHE:
@@ -510,13 +523,13 @@ class Spider:
         self.session.close()
 
 
-local = threading.local()
+local = {}
 
 
 def get_spider():
     if 'spider' not in local:
-        local.spider = Spider()
-    return local.spider
+        local['spider'] = Spider()
+    return local['spider']
 
 
 def gs():
