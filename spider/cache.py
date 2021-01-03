@@ -5,6 +5,7 @@ import os
 import pickle
 import uuid
 from json import load, dump
+from math import ceil
 from os.path import exists
 from os.path import join
 from typing import Union
@@ -230,14 +231,15 @@ class SqliteCache(CacheBase):
         if SqliteCacheData.select().count() > self.cache_size:
             logger.debug('删除缓存中......')
             will_del = SqliteCacheData.select() \
-                .limit(int(self.remain_percent * self.cache_size)) \
+                .limit(ceil(self.remain_percent * self.cache_size)) \
                 .order_by(SqliteCacheData.alive_time)
-            print('will_del len', will_del.count())
+            # print('will_del len', will_del.count())
+            # del_count: ModelObjectCursorWrapper = will_del.execute()
             for each in will_del:
                 each.delete_instance()
             logger.info('缓存过多, 最大缓存大小[{}], 删除缓存[{}]个, 剩下缓存[{}]个'.format(
                 self.cache_size,
-                len(will_del),
+                will_del.__len__(),
                 SqliteCacheData.select().count()
             ))
 

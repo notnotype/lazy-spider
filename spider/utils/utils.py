@@ -42,7 +42,7 @@ def good_dirname(string: str) -> str:
 
 def get_sqlite_db(db_name='db.sqlite'):
     db = SqliteDatabase(db_name)
-    logger.info('创建数据库[{}]'.format(db_name))
+    logger.info('获取数据库[{}]'.format(db_name))
     return db
 
 

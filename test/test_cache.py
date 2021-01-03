@@ -28,7 +28,7 @@ class TestSqliteCache:
         assert item is None
 
     def test_clear_more_caches(self):
-        self.cache.cache_size = 50
+        self.cache.cache_size = 1
         self.cache.clear_more_caches()
 
 

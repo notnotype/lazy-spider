@@ -144,5 +144,7 @@ response.title
 response.__str__
 等等......
 ```
-
+```shell
+python -m pip install requests[socks]
+```
 
