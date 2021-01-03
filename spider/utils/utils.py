@@ -33,13 +33,6 @@ def limit_text(s: str, max_len, replace='...'):
         return s
 
 
-def elem_tostring(elem):
-    """HTML元素转换成字符串"""
-    elem_text_nodes = elem.xpath(".//text()")
-    beautiful_text = ''.join([elem.strip() for elem in elem_text_nodes])
-    return beautiful_text
-
-
 def good_dirname(string: str) -> str:
     """一个好目录名字"""
     string.replace('\n', '').replace('\t', '').replace(' ', '')
