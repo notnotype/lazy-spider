@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "lazy_spider"
-version = "0.1.4"
+version = "0.1.5"
 description = "A lazy spider tools which intergrate lxml, requests, peewee......"
 authors = ["notnotype <2056369669@qq.com>"]
 license = "MIT"
 packages = [
-    { include = "spider", from = "." },
+    { include = "lazy_spider", from = "." },
 ]
 
 [tool.poetry.dependencies]

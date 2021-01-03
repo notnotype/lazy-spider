@@ -1,5 +1,5 @@
 """
-general_template
+generic_template
 """
 
 import logging

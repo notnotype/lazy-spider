@@ -20,7 +20,7 @@ from lxml.etree import HTML
 from lxml.html import HtmlElement
 
 from spider.cache import SqliteCache
-from .utils import general_response_pipeline, get_random_header, limit_text, random_sleeper
+from .utils import generic_response_pipeline, get_random_header, limit_text, random_sleeper
 
 
 # 改变脚本的工作目录
@@ -61,8 +61,8 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
                                        f"{localtime().tm_min}m-"
                                        f"{localtime().tm_sec}s.log",
                                        encoding="utf-8")
-    formatter = logging.Formatter('[{asctime}]'
-                                  '[{levelname!s:5}]'
+    formatter = logging.Formatter('[{levelname!s:5}]'
+                                  '[{asctime}]'
                                   '[{name!s:^6}]'
                                   '[{lineno!s:4}行]'
                                   '[{module}.{funcName}]\n'
@@ -341,7 +341,7 @@ class Spider:
         self.session = requests.session()
         self.sleeper = random_sleeper(5, 10)
         # todo change to pipelines
-        self.response_pipeline = general_response_pipeline
+        self.response_pipeline = generic_response_pipeline
         self.request_pipeline = None
         # todo proxy_generator
         self.proxy_generator = None

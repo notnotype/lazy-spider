@@ -10,11 +10,11 @@ from requests import Request
 logger = logging.getLogger('spider')
 
 
-def general_request_pipeline(spider, response) -> Request:
+def generic_request_pipeline(spider, response) -> Request:
     ...
 
 
-def general_response_pipeline(spider, response):
+def generic_response_pipeline(spider, response):
     return response
 
 
