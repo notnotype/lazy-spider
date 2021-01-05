@@ -5,9 +5,9 @@ from typing import Callable, List
 
 from peewee import *
 
-from spider import Spider
+from lazy_spider import Spider
 
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 
 HTTP = 1
 HTTPS = 2

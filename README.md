@@ -18,11 +18,11 @@ import logging
 import sys
 from urllib.parse import quote
 
-from spider import *
+from lazy_spider import *
 
 
 spider = Spider()
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 res = ResourceRoot('resources')
 
 if __name__ == '__main__':
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
 一切都是那么的自然而简单,仅仅只需按以下方法调用就能将json序列化了
 ```python
-# 使用`spider`模块
+# 使用`lazy_spider`模块
 # res['文件名'] = 字典对象
 # res['href.json']={'hrefs':hrefs}
 ```

@@ -1,10 +1,10 @@
 import logging
 import time
 
-from spider import Spider, ResourceRoot
+from lazy_spider import Spider, ResourceRoot
 
 spider = Spider()
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 res = ResourceRoot('resources/imgs')
 
 
@@ -27,6 +27,6 @@ if __name__ == "__main__":
         time.sleep(0.1)
     # f = res['1.jpg']
     # tmp = '{:13.13}'.format(time.time()).replace('.', '')
-    # r = spider.get('https://setu.awsl.ee/api/setu!?w=' + tmp,
+    # r = lazy_spider.get('https://setu.awsl.ee/api/setu!?w=' + tmp,
     #                cache=Spider.DISABLE_CACHE)
     # f.write(r.content)

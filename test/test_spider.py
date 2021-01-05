@@ -5,11 +5,11 @@ sys.path.append(os.pardir)
 
 import logging
 
-from spider import Spider
-from spider import ResourceRoot
+from lazy_spider import Spider
+from lazy_spider import ResourceRoot
 
 spider = Spider()
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 res = ResourceRoot('resources/imgs')
 
 
@@ -46,7 +46,7 @@ class TestSpider:
 
 
 def test_gs():
-    # spider.cache.clear_all()
+    # lazy_spider.cache.clear_all()
     r = spider.get('www.baidu.com/', 's',
                    params={'wd': 'python我爱你'},
                    cache=Spider.DISABLE_CACHE)

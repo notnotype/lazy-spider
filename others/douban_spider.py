@@ -1,12 +1,12 @@
 import logging
 import sys
 
-from spider import *
+from lazy_spider import *
 
 sys.path.append('../')
 
 spider = Spider()
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 res = ResourceRoot('resources')
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ import requests
 from lxml.etree import HTML
 from lxml.html import HtmlElement
 
-from spider.cache import SqliteCache
+from lazy_spider.cache import SqliteCache
 from .utils import generic_response_pipeline, get_random_header, limit_text, random_sleeper
 
 
@@ -71,7 +71,7 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
                                   datefmt='%Y-%m-%d %H:%M:%S')
     file_handler.setFormatter(formatter)
 
-    _logger = logging.getLogger('spider')
+    _logger = logging.getLogger('lazy_spider')
     _console = logging.StreamHandler()
     _logger.setLevel(level)
     _console.setLevel(level)
@@ -527,9 +527,9 @@ local = {}
 
 
 def get_spider():
-    if 'spider' not in local:
-        local['spider'] = Spider()
-    return local['spider']
+    if 'lazy_spider' not in local:
+        local['lazy_spider'] = Spider()
+    return local['lazy_spider']
 
 
 def gs():

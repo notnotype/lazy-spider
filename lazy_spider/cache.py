@@ -14,7 +14,7 @@ from peewee import *
 
 from .utils import limit_text, get_sqlite_db
 
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 db = get_sqlite_db()
 
 

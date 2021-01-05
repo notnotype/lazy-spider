@@ -7,7 +7,7 @@ from fake_useragent import UserAgent
 from peewee import SqliteDatabase
 from requests import Request
 
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 
 
 def generic_request_pipeline(spider, response) -> Request:

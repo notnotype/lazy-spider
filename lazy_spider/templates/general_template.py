@@ -6,11 +6,11 @@ import logging
 
 from peewee import *
 
-from spider import ResourceRoot
-from spider import Spider
+from lazy_spider import ResourceRoot
+from lazy_spider import Spider
 
 spider = Spider()
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 res = ResourceRoot('resources')
 db = SqliteDatabase('db.sqlite')
 

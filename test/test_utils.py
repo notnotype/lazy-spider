@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(os.pardir)
 
-from spider import utils
+from lazy_spider import utils
 from lxml.etree import HTML
 
 

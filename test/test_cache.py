@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(os.pardir)
 
-from spider.cache import SqliteCache
+from lazy_spider.cache import SqliteCache
 
 
 class TestSqliteCache:

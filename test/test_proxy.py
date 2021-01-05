@@ -1,4 +1,4 @@
-from spider.generic import proxy
+from lazy_spider.generic import proxy
 
 
 class TestSqliteProxy:
@@ -42,7 +42,7 @@ class TestSqliteProxy:
         assert r == 1
 
 
-from spider.generic.proxy import *
+from lazy_spider.generic.proxy import *
 
 
 class TestCollection(ProxyCollector):
@@ -62,12 +62,12 @@ class TestCollection(ProxyCollector):
         yield f'https://www.kuaidaili.com/free/inha/{page_num + 1}/'
 
 
-from spider.utils import get_sqlite_db
+from lazy_spider.utils import get_sqlite_db, sleep
 
 
 def test_test_collection():
     spider = Spider()
-    spider.set_sleeper(lambda: None)
+    spider.set_sleeper(lambda: sleep(5))
     tc = TestCollection(SqliteProxyPool(get_sqlite_db()), spider)
     tc.run()
     print(tc.items)

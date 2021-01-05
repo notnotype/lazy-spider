@@ -2,9 +2,9 @@ __author__ = 'Notnotype'
 
 import logging
 
-from spider import Spider
+from lazy_spider import Spider
 
-logger = logging.getLogger('spider')
+logger = logging.getLogger('lazy_spider')
 
 from collections import deque
 
