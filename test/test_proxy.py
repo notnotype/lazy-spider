@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.append(os.pardir)
+
 from lazy_spider.generic import proxy
 
 
@@ -37,7 +42,7 @@ class TestSqliteProxy:
 
     def test_del(self):
         pool = self.pool
-        r = pool.del_proxy('127.0.0.3', 80)
+        pool.add_proxy('127.0.0.3', 80)
         r = pool.del_proxy('127.0.0.3', 80)
         assert r == 1
 
@@ -65,9 +70,29 @@ class TestCollection(ProxyCollector):
 from lazy_spider.utils import get_sqlite_db, sleep
 
 
-def test_test_collection():
+def try_test_collection():
     spider = Spider()
     spider.set_sleeper(lambda: sleep(5))
     tc = TestCollection(SqliteProxyPool(get_sqlite_db()), spider)
     tc.run()
     print(tc.items)
+
+
+def test_proxy_checker():
+    checker = GenericProxyChecker(Apis())
+    checker.set_sock_timeout(2)
+    pool = SqliteProxyPool(get_sqlite_db())
+    for i in range(10):
+        _proxy = pool.get_proxies()[0]
+        print('check:', _proxy)
+        r = checker.check(_proxy)
+        print('r =', r)
+
+
+def main():
+    try_test_collection()
+    pass
+
+
+if __name__ == '__main__':
+    exit(main())

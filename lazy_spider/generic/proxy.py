@@ -1,8 +1,12 @@
 __author__ = 'Notnotype'
 
 import logging
+import socket
+import telnetlib
+from random import choice
 from typing import Callable, List
 
+import requests
 from peewee import *
 
 from lazy_spider import Spider
@@ -18,14 +22,127 @@ HTTPS_SOCK5 = 6
 HTTP_HTTPS_SOCK5 = 7
 
 
-class ProxyCheckerBase:
-    def check(self, host, port, username=None, password=None, schema=HTTP, timeout=5) -> bool:
-        ...
+class Apis:
+    def __init__(self, ip):
+        self.ip = ip
+        self.api_names = ['api_check_1', 'api_check_2']
+
+    def api_check_1(self, proxies: dict, timeout=(5, 5)):
+        try:
+            resp = requests.get('https://api.ipify.org/', timeout=timeout, proxies=proxies)
+            logger.debug(resp.text)
+            if resp.text != self.ip:
+                return True
+            else:
+                return False
+        except requests.RequestException:
+            return False
+
+    def api_check_2(self, proxies: dict, timeout=(5, 5)):
+        try:
+            resp = requests.get('http://icanhazip.com/', timeout=timeout, proxies=proxies)
+            logger.debug('resp.text: {}, proxies: {}', resp.text, proxies)
+            if resp.text != self.ip:
+                return True
+            else:
+                return False
+        except requests.RequestException:
+            return False
 
 
-class GenericProxyChecker(ProxyCheckerBase):
-    def check(self, host, port, username=None, password=None, schema=HTTP, timeout=5) -> bool:
-        return super().check(host, port, username, password, schema, timeout)
+def parse_proxy_url(url: str) -> tuple:
+    """解析代理url to `username, password, host, port`
+    """
+    url = url[url.find('//') + 2:]
+    a = url.split('@')
+    username = ''
+    password = ''
+    if len(a) == 2:
+        has_auth = True
+    else:
+        has_auth = False
+
+    if has_auth:
+        username, password = a[0].split(':')
+        password = int(password)
+        host, port, = a[1].split(':')
+        port = int(port)
+    else:
+        host, port, = a[0].split(':')
+        port = int(port)
+
+    return username, password, host, port
+
+
+def test_parse_proxy_url():
+    url1 = 'http://175.42.128.241:9999'
+    url2 = 'http://175.42.128.241:9999'
+    username, password, host, port = parse_proxy_url(url1)
+    print(username, password, host, port)
+    username, password, host, port = parse_proxy_url(url2)
+    print(username, password, host, port)
+
+
+class GenericProxyChecker:
+    # telnet 失败(端口没开)
+    CANT_TELNET = 0
+    # ip检测失败, 未代理
+    CANT_PROXY = 1
+    OK = 2
+
+    def __init__(self, apis: Apis):
+        self.apis = apis
+        self.timeout: tuple = (3, 3)
+        self.sock_timeout: int = 3
+
+    def telnet_check(self, ip, port, timeout=None) -> bool:
+        # logger.debug('ip: {}, port: {}, timeout: {}', ip, port, timeout)
+        if not timeout:
+            timeout = self.timeout
+        try:
+            telnetlib.Telnet(ip, port=port, timeout=timeout)
+            return True
+        except socket.timeout as e:
+            return False
+        except Exception as e:
+            logger.debug('ip:{} port:{}', ip, port)
+            logger.exception(e)
+
+    def check(self, proxies: dict, timeout=None) -> bool:
+        """测试代理是否能够连接"""
+        if not timeout:
+            timeout = self.sock_timeout
+        url: str = list(proxies.items())[0][1]
+        username, password, host, port = parse_proxy_url(url)
+        if self.telnet_check(host, port, timeout=timeout):
+            logger.debug('\033[1;44;44mAPI测试{}\033[0m', proxies)
+            if getattr(self.apis, choice(self.apis.api_names))(proxies, timeout):
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def proxy_info(self, proxies: dict, timeout=None) -> int:
+        """测试代理, 给出详细信息"""
+        if not timeout:
+            timeout = self.sock_timeout
+        url: str = list(proxies.items())[0][1]
+        username, password, host, port = parse_proxy_url(url)
+
+        if self.telnet_check(host, port, timeout=timeout):
+            if getattr(self.apis, choice(self.apis.api_names))(proxies, timeout):
+                return self.OK
+            else:
+                return self.CANT_PROXY
+        else:
+            return self.CANT_TELNET
+
+    def set_timeout(self, timeout: tuple):
+        self.timeout = timeout
+
+    def set_sock_timeout(self, sock_timeout: int):
+        self.sock_timeout = sock_timeout
 
 
 class ProxyPoolBase:
@@ -115,7 +232,6 @@ class SqliteProxyPool(ProxyPoolBase):
         # init database
         self.db = db
         SqliteProxy._meta.set_database(db)
-        print('*******************************Ok')
         if not db.is_connection_usable():
             db.connect()
         if not db.table_exists(SqliteProxy):
@@ -131,8 +247,8 @@ class SqliteProxyPool(ProxyPoolBase):
             proxies.append(proxy)
         return proxies
 
-    def add_proxy(self, host, port, schema=HTTP, username=None, password=None):
-        query = SqliteProxy.select().where(SqliteProxy.host == host & SqliteProxy.port == port)
+    def add_proxy(self, host: str, port: int, schema=HTTP, username=None, password=None):
+        query = SqliteProxy.select().where((SqliteProxy.host == host) & (SqliteProxy.port == port))
         if query:
             model = query[0]
         else:
@@ -141,9 +257,12 @@ class SqliteProxyPool(ProxyPoolBase):
             model = middleware(model, host, port, schema, username, password)
         model.save()
 
-    def del_proxy(self, host, port):
-        sql = SqliteProxy.delete().where(SqliteProxy.host == host & SqliteProxy.port == port)
-        return sql.execute()
+    def del_proxy(self, host: str, port: int):
+        query = SqliteProxy.select().where((SqliteProxy.host == host) & (SqliteProxy.port == port))
+        counts = len(query)
+        for each in query:
+            each.delete_instance()
+        return counts
 
     def get_in_middlewares(self) -> List[Callable]:
         return self.in_middlewares
