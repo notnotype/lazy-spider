@@ -20,15 +20,12 @@ from lxml.etree import HTML
 from lxml.html import HtmlElement
 
 from lazy_spider.cache import SqliteCache
-from .utils import generic_response_pipeline, get_random_header, limit_text, random_sleeper
+from lazy_spider.exception import HTTPBadCodeError
+from lazy_spider.utils import (generic_response_pipeline, get_random_header,
+                               limit_text)
 
 
-# 改变脚本的工作目录
-# START_DIR = os.getcwd()
-# FILE_DIR = os.path.dirname(os.path.abspath(__file__))
-# os.chdir(FILE_DIR)
-
-
+# todo 优化logger 有颜色的logger
 class FormatFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> int:
@@ -61,6 +58,16 @@ def init_logger(log_dir='log', level=logging.DEBUG) -> logging.Logger:
                                        f"{localtime().tm_min}m-"
                                        f"{localtime().tm_sec}s.log",
                                        encoding="utf-8")
+    # generic logger
+    # formatter = logging.Formatter('[{levelname!s:5}]'
+    #                               '[{asctime}]'
+    #                               '[{name!s:^6}]'
+    #                               '[{lineno!s:4}行]'
+    #                               '[{module}.{funcName}]\n'
+    #                               '{message!s}',
+    #                               style='{',
+    #                               datefmt='%Y-%m-%d %H:%M:%S')
+    # todo colorful logger
     formatter = logging.Formatter('[{levelname!s:5}]'
                                   '[{asctime}]'
                                   '[{name!s:^6}]'
@@ -96,7 +103,7 @@ class ResourceBase:
         pass
 
 
-# 考虑使用`property`
+# todo 考虑使用`property`
 class ResourceRoot(ResourceBase):
     # todo 没有 close
     def scan(self):
@@ -247,7 +254,7 @@ class Spider:
     # 不使用缓存
     DISABLE_CACHE = 0
 
-    # done `lxml`
+    # todo 解藕
     class Response:
         def __init__(self, response: requests.Response):
             self.response = response
@@ -339,7 +346,7 @@ class Spider:
         # self.cache = JsonCache()
         self.cache = SqliteCache()
         self.session = requests.session()
-        self.sleeper = random_sleeper(5, 10)
+        self.sleeper = lambda: None
         # todo change to pipelines
         self.response_pipeline = generic_response_pipeline
         self.request_pipeline = None
@@ -383,6 +390,7 @@ class Spider:
 
     def set_cookie(self, cookie: str):
         """设置cookie
+
         :param cookie: 一个 `cookie` 字符串
         """
         cookie = {'Cookie': cookie}
@@ -391,6 +399,9 @@ class Spider:
             cookiejar=None,
             overwrite=True)
 
+    # todo 重构: 1, 简化参数, 除去 *args, **kwargs参数
+    # todo 2, 不默认缓存
+    # todo 3, 通过设置spider类来控制
     def lunch(self, handle: [requests.get, requests.post], *args, **kwargs) -> \
             Union[Response, requests.Response, object]:
         """
@@ -430,9 +441,6 @@ class Spider:
         if cache_enable == Spider.DISABLE_CACHE:
             # 如果禁用这个url的缓存, 则将之从缓存文件删除
             self.cache.clear_cache(url)
-
-        class HTTPBadCodeError(RuntimeError):
-            ...
 
         # 发送请求
         # 显示logger文案
@@ -523,6 +531,7 @@ class Spider:
         self.session.close()
 
 
+# todo 脚本模式和项目模式
 local = {}
 
 

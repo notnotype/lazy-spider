@@ -79,7 +79,7 @@ def try_test_collection():
 
 
 def test_proxy_checker():
-    checker = GenericProxyChecker(Apis())
+    checker = GenericProxyChecker(Apis('58.45.173.181'))
     checker.set_sock_timeout(2)
     pool = SqliteProxyPool(get_sqlite_db())
     for i in range(10):

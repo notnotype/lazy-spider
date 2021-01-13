@@ -1,0 +1,3 @@
+class HTTPBadCodeError(RuntimeError):
+    """错误的http代码"""
+    ...

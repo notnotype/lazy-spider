@@ -20,7 +20,7 @@ spider.headers_generator = lambda x: {
 
 if __name__ == '__main__':
     url = 'https://movie.douban.com/j/new_search_subjects?sort=U&range=0,10&tags=&start={}'
-    all = {'data': []}
+    all_data = {'data': []}
     for each in range(0, 1000, 20):
         logger.info('url: {}', url.format(each))
 
@@ -31,6 +31,6 @@ if __name__ == '__main__':
         # res['douban.json'] = lazy_spider.get(url.format(each))
         # 而这样的逻辑是 -- 直接把网页存入文件
         # res['douban{}.json'.format(each)] = lazy_spider.get(url.format(each)).json
-        all['data'] += spider.get(url.format(each)).json['data']
-    res['douban.json'] = all
+        all_data['data'] += spider.get(url.format(each)).json['data']
+    res['douban.json'] = all_data
     # sleep(5)

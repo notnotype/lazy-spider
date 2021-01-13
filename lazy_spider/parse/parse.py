@@ -1,10 +1,9 @@
 import re
 import warnings
 
+from html2text import html2text
 from lxml import etree
 from lxml.html import HtmlElement
-
-from .html2text import html2text
 
 
 def elem_tostring(elem: HtmlElement, encoding='utf8'):

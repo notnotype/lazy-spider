@@ -102,7 +102,7 @@ class GenericProxyChecker:
         try:
             telnetlib.Telnet(ip, port=port, timeout=timeout)
             return True
-        except socket.timeout as e:
+        except socket.timeout:
             return False
         except Exception as e:
             logger.debug('ip:{} port:{}', ip, port)
@@ -286,7 +286,7 @@ def generic_item_middleware(collector, item: dict):
     return item
 
 
-def generic_request_middleware(collector, requests: str):
+def generic_request_middleware(collector, request: str):
     return requests
 
 

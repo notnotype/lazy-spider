@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(os.pardir)
 
-from lazy_spider import utils
+from lazy_spider import parse
 from lxml.etree import HTML
 
 
@@ -34,7 +34,7 @@ def test_elem_tostring():
                 </div>
             </div>'''
     print('======test html1======')
-    text1 = utils.elem_tostring(HTML(html1))
-    text2 = utils.html2md(html1)
+    text1 = parse.elem_tostring(HTML(html1))
+    text2 = parse.html2md(html1)
     print(text1)
     print(text2)
