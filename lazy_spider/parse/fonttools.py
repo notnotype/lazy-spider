@@ -6,7 +6,7 @@ from PIL import Image, ImageFont, ImageDraw
 from aip import AipOcr
 from fontTools.ttLib.ttFont import TTFont
 
-logger = getLogger('spider')
+logger = getLogger('lazy_spider')
 
 
 class FontMappingBase:
@@ -101,6 +101,8 @@ class ORCFontMappingBase(FontMappingBase):
         super(ORCFontMappingBase, self).__init__()
         self.real_font_mapping: dict
         self._orc: ORCBase
+        self.font = None
+        self.pillow_font = None
 
 
 class BaiduORCFontMapping(ORCFontMappingBase):
@@ -118,9 +120,18 @@ class BaiduORCFontMapping(ORCFontMappingBase):
         # init baidu orc
         self._orc = BaiduORC(app_id, api_key, secret_key)
 
-    def update(self, filename: str, x_counts=25, y_counts=25, show_img=False):
+    def show_character(self, text):
+        font_size = self.pillow_font.getsize(text)
+        canvas = Image.new('RGB', font_size, (255, 255, 255))
+        draw = ImageDraw.Draw(canvas)
+        draw.text((0, 0), text, fill=0, font=self.pillow_font)
+        canvas.show()
+
+    def update(self, filename: str, x_counts=40, y_counts=20, fontsize=27, show_img=False, strict=False):
         """更新字体映射表, 或者覆盖原来的映射表
 
+        :param fontsize:
+        :param strict:
         :param filename: 字体文件
         :param x_counts: pillow画出来的图片一行几个字
         :param y_counts: pillow画出来的图片一列几个字
@@ -128,8 +139,11 @@ class BaiduORCFontMapping(ORCFontMappingBase):
         :return:
         """
         # open font file
-        font = TTFont(filename)
-        pillow_font = ImageFont.truetype(filename, 20)
+        self.font = TTFont(filename)
+        self.pillow_font = ImageFont.truetype(filename, fontsize)
+
+        font = self.font
+        pillow_font = self.pillow_font
 
         # draw font
         cmap: dict = font.getBestCmap()
@@ -148,7 +162,7 @@ class BaiduORCFontMapping(ORCFontMappingBase):
         # 连续作画
         for i in range(0, len(cmap), batch_size):
             cmap_batch = list(cmap.items())[i:i + batch_size]
-            canvas_size = font_size[0] * x_counts, font_size[1] * y_counts
+            canvas_size = font_size[0] * (x_counts+3), font_size[1] * y_counts
 
             # drawing
             text = ''
@@ -169,6 +183,23 @@ class BaiduORCFontMapping(ORCFontMappingBase):
 
             result = self._orc.recognize('temp.jpeg')
 
-            real_font_mapping = dict(zip(text.replace('\n', ''), result.replace('\n', '')))
+            t_text = text.split('\n')
+            t_result = result.split('\n')
 
-            self.real_font_mapping.update(real_font_mapping)
+            has_error = False
+            for j in zip(t_text, t_result):
+                # print(list(j), len(j[0]), len(j[1]))
+                if len(j[0]) != len(j[1]):  # 识别失败
+                    has_error = True
+                    # 打印错误信息
+                    if strict:
+                        raise RuntimeError('识别失误 {}, {}, {}'.format(list(j), len(j[0]), len(j[1])))
+                self.real_font_mapping.update(dict(zip(*j)))
+            if not has_error:
+                logger.info('字体图标识别成功')
+
+
+# todo KNNFontMapping
+class KNNFontMapping(FontMappingBase):
+    def __init__(self):
+        super().__init__()
