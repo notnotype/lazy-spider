@@ -153,6 +153,9 @@ class JsonCache(CacheBase):
         logger.debug('删除缓存[{}]个'.format(len(self.__cache_json)))
         self.__cache_json = {"cached_files": {}}
 
+    def __repr__(self):
+        return self.__cache_json_name
+
 
 class SqliteCacheData(Model):
     url = CharField()
@@ -254,3 +257,32 @@ class SqliteCache(CacheBase):
         result = sql.execute()
         logger.debug('删除缓存[{}]个'.format(result))
         return
+
+    def __repr__(self):
+        return self.table_name
+
+
+class NoCache(CacheBase):
+    def __init__(self):
+        super().__init__()
+
+    def is_cached(self, name: str, ignore_date=False) -> bool:
+        return False
+
+    def from_cache(self, name: str, force=False) -> object:
+        return None
+
+    def cache(self, name: str, obj, alive_time: Union[datetime.datetime, int]) -> bool:
+        return False
+
+    def save(self):
+        super().save()
+
+    def clear_cache(self, name: str):
+        super().clear_cache(name)
+
+    def clear_all(self):
+        super().clear_all()
+
+    def __repr__(self):
+        return 'NoCache'

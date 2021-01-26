@@ -48,6 +48,7 @@ class TestSqliteProxy:
 
 
 from lazy_spider.generic.proxy import *
+from lazy_spider.tools.proxy_collector import ProxyCollector
 
 
 class TestCollection(ProxyCollector):
@@ -67,7 +68,7 @@ class TestCollection(ProxyCollector):
         yield f'https://www.kuaidaili.com/free/inha/{page_num + 1}/'
 
 
-from lazy_spider.utils import get_sqlite_db, sleep
+from lazy_spider.utils import get_sqlite_db
 
 
 def try_test_collection():
