@@ -67,11 +67,11 @@ class SepTimeSleeper(SleeperBase):
         self.sep_time = sep_time
         self.__last_request_time: Optional[int] = None
 
-    def wait_sep_time(self):
+    def __call__(self):
+        now = time.time()
+        self.__last_request_time = now
         if self.__last_request_time:
-            now = time.time()
             sleep_time = self.sep_time - (now - self.__last_request_time)
-            self.__last_request_time = now
             if sleep_time > 0:
                 sleep(sleep_time)
 
@@ -136,8 +136,6 @@ class Spider:
         self.cache = cache or NoCache()
         if not session:
             self.session = Session()
-        # if not headers_generator:
-        #     self.headers_generator =
         self.sleeper = sleeper or NoSleeper()
         self.request_middlewares = request_middlewares or []
         self.response_middlewares = response_middlewares or []
@@ -151,6 +149,8 @@ class Spider:
         self.alive_time = alive_time or 3
         self.retry = retry or 3
 
+        self.update_headers()
+
     @classmethod
     def get_cache_spider(cls) -> 'Spider':
         spider = cls(SqliteCache())
@@ -162,7 +162,11 @@ class Spider:
             raise RuntimeError('参数必须是Callable')
         self.sleeper = sleeper
 
-    # todo getter and setter
+    def set_random_sleeper(self, a=5, b=10):
+        self.set_sleeper(RandomTimeSleeper(a, b))
+
+    def set_sep_sleeper(self, sep_time=10):
+        self.set_sleeper(SepTimeSleeper(sep_time))
 
     @property
     def encoding(self):

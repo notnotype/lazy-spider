@@ -10,6 +10,7 @@ from lazy_spider import Spider, ResourceRoot
 # 实例化一个 `Spider` 类
 # 这是你与网络的接口类, 也是此模块的主要类
 spider = Spider()
+spider.set_sep_sleeper()
 # 模块内置的 `logger` 你可以尝试用 `logger.debug` 来代替 `print` 这会更加美观
 logger = logging.getLogger('lazy_spider')
 # 模块里面的管理资源文件的类, 它把一个资源文件夹抽象成了一个类
