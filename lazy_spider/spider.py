@@ -227,11 +227,17 @@ class Spider:
         # 如果 `is_force_cache` is True 则, 不论缓存是否过期, 都从缓存加载
         elif cache_mode == Spider.FORCE_CACHE and self.cache.is_cached(cache_signal, ignore_date=True):
             logger.debug('从缓存: {} <- {}', limit_text(req.url, 100), self.cache)
-            return self.cache.from_cache(cache_signal, force=True)
+            response = self.cache.from_cache(cache_signal, force=True)
+            if self.encoding:
+                response.encoding = self.encoding
+            return response
 
         elif cache_mode == Spider.ENABLE_CACHE and self.cache.is_cached(cache_signal, ignore_date=False):
             logger.debug('从缓存: {} <- {}', limit_text(cache_signal, 100), self.cache)
-            return self.cache.from_cache(cache_signal, force=False)
+            response = self.cache.from_cache(cache_signal, force=False)
+            if self.encoding:
+                response.encoding = self.encoding
+            return response
 
         retry = retry
         while retry:
